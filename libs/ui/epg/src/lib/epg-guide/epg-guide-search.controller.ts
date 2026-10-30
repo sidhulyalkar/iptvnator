@@ -24,6 +24,8 @@ export class EpgGuideSearchController {
     );
 
     private timer?: number;
+    private requestGeneration = 0;
+    private destroyed = false;
 
     constructor(
         private readonly search?: (
@@ -34,6 +36,8 @@ export class EpgGuideSearchController {
     }
 
     setQuery(query: string): void {
+        if (this.destroyed) return;
+        const generation = ++this.requestGeneration;
         this.query.set(query);
         window.clearTimeout(this.timer);
         const term = query.trim();
@@ -45,13 +49,15 @@ export class EpgGuideSearchController {
             // The host's search may throw synchronously (before it ever
             // returns a promise), which `.catch()` alone would not contain.
             const hits = await this.runSearch(term);
-            if (this.query() === query) {
+            if (!this.destroyed && generation === this.requestGeneration) {
                 this.results.set(hits.slice(0, SEARCH_MAX_RESULTS));
             }
         }, SEARCH_DEBOUNCE_MS);
     }
 
     destroy(): void {
+        this.destroyed = true;
+        this.requestGeneration++;
         window.clearTimeout(this.timer);
     }
 

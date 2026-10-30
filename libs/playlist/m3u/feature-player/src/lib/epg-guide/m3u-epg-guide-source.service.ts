@@ -1,11 +1,11 @@
 import { computed, inject, Injectable, Signal, signal } from '@angular/core';
 import { Store } from '@ngrx/store';
 import { TranslateService } from '@ngx-translate/core';
-import { EpgRuntimeBridgeService } from '@iptvnator/epg/data-access';
+import { EpgProgramDiscoveryService, EpgRuntimeBridgeService } from '@iptvnator/epg/data-access';
 import { resolveChannelEpgLookupKey } from '@iptvnator/m3u-state';
 import { SettingsStore, injectTranslationTick } from '@iptvnator/services';
 import { applyChannelNameStrip } from '@iptvnator/shared/m3u-utils';
-import { Channel } from '@iptvnator/shared/interfaces';
+import { Channel, epgProviderClockMs } from '@iptvnator/shared/interfaces';
 import type { EpgProgram } from '@iptvnator/shared/interfaces';
 import {
     EpgGuideChannel,
@@ -52,6 +52,7 @@ const SEARCH_LIMIT = 20;
 export class M3uEpgGuideSourceService implements EpgGuideSource {
     private readonly store = inject(Store);
     private readonly epgBridge = inject(EpgRuntimeBridgeService);
+    private readonly discovery = inject(EpgProgramDiscoveryService);
     private readonly settingsStore = inject(SettingsStore);
     private readonly translate = inject(TranslateService);
 
@@ -286,7 +287,12 @@ export class M3uEpgGuideSourceService implements EpgGuideSource {
     /** Hits carry the row id only when an exact `epgKey` match exists in scope. */
     async searchPrograms(query: string): Promise<EpgGuideSearchHit[]> {
         const programs =
-            (await this.epgBridge.searchPrograms(query, SEARCH_LIMIT)) ?? [];
+            (await this.discovery.search(query, SEARCH_LIMIT, {
+                nowMs: epgProviderClockMs(
+                    Date.now(),
+                    this.settingsStore.resolvedEpgOffsetMinutes()
+                ),
+            })) ?? [];
         const byKey = new Map<string, EpgGuideChannel>();
         for (const channel of this.channels()) {
             // Duplicate rows share an EPG key; jump to the first, like
