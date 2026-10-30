@@ -18,6 +18,6 @@ jobs:
         with:
           node-version: '24.22.1'
       - name: Validate synthetic fixtures and query suite
-        run: node --test tools/unified-tv/evaluate.test.mjs
+        run: node --test tools/unified-tv/*.test.mjs
       - name: Emit fixture-only reference metrics
         run: node tools/unified-tv/evaluate.mjs
