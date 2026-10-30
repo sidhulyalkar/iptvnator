@@ -286,12 +286,14 @@ export class M3uEpgGuideSourceService implements EpgGuideSource {
 
     /** Hits carry the row id only when an exact `epgKey` match exists in scope. */
     async searchPrograms(query: string): Promise<EpgGuideSearchHit[]> {
+        const nowUtcMs = Date.now();
+        const epgOffsetMinutes =
+            this.settingsStore.resolvedEpgOffsetMinutes();
         const programs =
             (await this.discovery.search(query, SEARCH_LIMIT, {
-                nowMs: epgProviderClockMs(
-                    Date.now(),
-                    this.settingsStore.resolvedEpgOffsetMinutes()
-                ),
+                nowMs: epgProviderClockMs(nowUtcMs, epgOffsetMinutes),
+                nowUtcMs,
+                epgOffsetMinutes,
             })) ?? [];
         const byKey = new Map<string, EpgGuideChannel>();
         for (const channel of this.channels()) {
