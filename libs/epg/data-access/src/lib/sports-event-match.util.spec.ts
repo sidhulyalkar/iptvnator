@@ -54,6 +54,12 @@ describe('sports event schedule and EPG matching', () => {
         expect(selectScheduledSportsEvents({ ...snapshot, fetchedAtUtc: 'wrong' }, 'NFL', NOW)).toEqual([]);
         expect(selectScheduledSportsEvents({ ...snapshot, fetchedAtUtc: '2026-11-02T00:00:00Z' }, 'NFL', NOW)).toEqual([]);
         expect(selectScheduledSportsEvents(snapshot, 'NFL', NaN)).toEqual([]);
+        expect(selectScheduledSportsEvents({
+            ...snapshot, fetchedAtUtc: '2026-11-01T18:15:00',
+        }, 'NFL', NOW)).toEqual([]);
+        expect(selectScheduledSportsEvents({
+            ...snapshot, events: [{ ...game, kickoffUtc: '2026-11-01T18:00:00' }],
+        }, 'NFL', NOW)).toEqual([]);
     });
     it('requires independent home and away team identity and plausible event time', () => {
         expect(selectScheduledSportsEvents({

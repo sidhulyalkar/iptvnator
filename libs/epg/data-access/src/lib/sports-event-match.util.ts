@@ -37,6 +37,12 @@ const MAX_START_OFFSET_MS = 2 * 60 * 60 * 1000;
 const MAX_LOOKBACK_MS = 6 * 60 * 60 * 1000;
 const MAX_LOOKAHEAD_MS = 14 * 24 * 60 * 60 * 1000;
 
+function scheduleInstant(value: string): number {
+    if (typeof value !== 'string' ||
+        !/(?:Z|[+-]\d{2}:\d{2})$/i.test(value)) return Number.NaN;
+    return Date.parse(value);
+}
+
 function normalize(input: string): string {
     return input.normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
         .toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ')
@@ -69,7 +75,7 @@ export function selectScheduledSportsEvents(
     nowMs: number
 ): ScheduledSportsEvent[] {
     if (!snapshot || !Number.isFinite(nowMs) || !snapshot.providerId) return [];
-    const fetched = Date.parse(snapshot.fetchedAtUtc);
+    const fetched = scheduleInstant(snapshot.fetchedAtUtc);
     if (!Number.isFinite(fetched) || nowMs - fetched > MAX_SNAPSHOT_AGE_MS ||
         fetched - nowMs > 5 * 60 * 1000 || !Array.isArray(snapshot.events)) return [];
     const q = queryTerms(query);
@@ -85,7 +91,7 @@ export function selectScheduledSportsEvents(
             !Array.isArray(event.leagueAliases) ||
             !Array.isArray(event.home.aliases) ||
             !Array.isArray(event.away.aliases)) continue;
-        const kickoff = Date.parse(event.kickoffUtc);
+        const kickoff = scheduleInstant(event.kickoffUtc);
         if (!Number.isFinite(kickoff) ||
             kickoff < nowMs - MAX_LOOKBACK_MS ||
             kickoff > nowMs + MAX_LOOKAHEAD_MS) continue;
@@ -102,8 +108,8 @@ export function selectScheduledSportsEvents(
         if (league || (home && away) || singleTeam) selected.push(event);
     }
     return selected.sort((a, b) =>
-        Math.abs(Date.parse(a.kickoffUtc) - nowMs) -
-        Math.abs(Date.parse(b.kickoffUtc) - nowMs) ||
+        Math.abs(scheduleInstant(a.kickoffUtc) - nowMs) -
+        Math.abs(scheduleInstant(b.kickoffUtc) - nowMs) ||
         a.id.localeCompare(b.id)
     ).slice(0, MAX_EVENTS_PER_QUERY);
 }
@@ -125,7 +131,7 @@ export function matchScheduledSportsAiring(
     candidates: readonly ElectronBridgeEpgSearchProgram[],
     epgOffsetMinutes = 0
 ): MatchedSportsAiring[] {
-    const kickoff = Date.parse(event.kickoffUtc);
+    const kickoff = scheduleInstant(event.kickoffUtc);
     if (!Number.isFinite(kickoff)) return [];
     const correctionMs = epgOffsetMs(epgOffsetMinutes);
     const found: MatchedSportsAiring[] = [];
