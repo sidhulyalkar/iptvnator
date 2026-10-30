@@ -77,9 +77,14 @@ export function selectScheduledSportsEvents(
     const wantsLive = /\b(?:live|currently|right now)\s*$/i.test(query);
     const wantsUpcoming = /\bupcoming\s*$/i.test(query);
     const selected: ScheduledSportsEvent[] = [];
-    for (const event of snapshot.events.slice(0, 500)) {
+    // Array.isArray narrows readonly arrays to any[]; restore our typed contract.
+    const events: readonly ScheduledSportsEvent[] = snapshot.events;
+    for (const event of events.slice(0, 500)) {
         if (!event?.id || !event.leagueId || event.home?.id === event.away?.id ||
-            !event.home?.id || !event.away?.id) continue;
+            !event.home?.id || !event.away?.id ||
+            !Array.isArray(event.leagueAliases) ||
+            !Array.isArray(event.home.aliases) ||
+            !Array.isArray(event.away.aliases)) continue;
         const kickoff = Date.parse(event.kickoffUtc);
         if (!Number.isFinite(kickoff) ||
             kickoff < nowMs - MAX_LOOKBACK_MS ||
