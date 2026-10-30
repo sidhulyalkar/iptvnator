@@ -1,0 +1,85 @@
+{
+  "fixtureOnly": true,
+  "cases": [
+    {
+      "query": "NFL",
+      "expectedTopId": "event-packers-panthers",
+      "category": "league"
+    },
+    {
+      "query": "Packers vs Panthers",
+      "expectedTopId": "event-packers-panthers",
+      "category": "matchup"
+    },
+    {
+      "query": "Packers n Panthers",
+      "expectedTopId": "event-packers-panthers",
+      "category": "voice-alias"
+    },
+    {
+      "query": "football right now",
+      "expectedTopId": "event-packers-panthers",
+      "category": "live-intent"
+    },
+    {
+      "query": "soccer live now",
+      "expectedTopId": "event-city-united",
+      "category": "live-intent"
+    },
+    {
+      "query": "Premier League",
+      "expectedTopId": "event-city-united",
+      "category": "league"
+    },
+    {
+      "query": "Orbit Station",
+      "expectedTopId": "episode-orbit-203",
+      "category": "series"
+    },
+    {
+      "query": "Orbit Station season 2 episode 3",
+      "expectedTopId": "episode-orbit-203",
+      "category": "episode"
+    },
+    {
+      "query": "science documentary",
+      "expectedTopId": "program-ocean",
+      "category": "description"
+    },
+    {
+      "query": "ocean currents",
+      "expectedTopId": "program-ocean",
+      "category": "exact-title"
+    },
+    {
+      "query": "news at six",
+      "expectedTopId": "program-evening-news",
+      "category": "alias"
+    },
+    {
+      "query": "Packers at Lions",
+      "expectedTopId": "event-packers-lions",
+      "category": "future-matchup"
+    },
+    {
+      "query": "NFL November 8",
+      "expectedTopId": "event-packers-lions",
+      "category": "date"
+    },
+    {
+      "query": "Packers vs Eagles",
+      "expectedTopId": null,
+      "category": "negative-event"
+    },
+    {
+      "query": "unavailable movie",
+      "expectedTopId": null,
+      "category": "negative-content"
+    },
+    {
+      "query": "TV",
+      "expectedTopId": null,
+      "category": "empty-intent"
+    }
+  ]
+}

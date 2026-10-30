@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tv generator-info-name="unified-tv-synthetic">
+  <channel id="gridiron.example"><display-name>Gridiron One</display-name></channel>
+  <channel id="soccer.example"><display-name>World Football</display-name></channel>
+  <channel id="drama.example"><display-name>Drama Lab</display-name></channel>
+  <channel id="science.example"><display-name>Discovery Lab</display-name></channel>
+  <channel id="news.example"><display-name>Daily Update</display-name></channel>
+  <programme start="20261101180000 +0000" stop="20261101210000 +0000" channel="gridiron.example"><title>Packers vs Panthers</title><desc>Synthetic NFL football game. Not a real schedule.</desc></programme>
+  <programme start="20261108180000 +0000" stop="20261108210000 +0000" channel="gridiron.example"><title>Packers at Lions</title><desc>Synthetic future football matchup.</desc></programme>
+  <programme start="20261101110000 -0700" stop="20261101130000 -0700" channel="soccer.example"><title>City FC vs United FC</title><desc>Synthetic Premier League soccer game.</desc></programme>
+  <programme start="20261101180000 +0000" stop="20261101190000 +0000" channel="drama.example"><title>Orbit Station: Signal</title><desc>Fictional sci-fi episode S2 E3.</desc></programme>
+  <programme start="20261101180000 +0000" stop="20261101190000 +0000" channel="science.example"><title>Ocean Currents</title><desc>Science documentary about ocean currents.</desc></programme>
+  <programme start="20261101180000 +0000" stop="20261101190000 +0000" channel="news.example"><title>Evening News</title><desc>Local headlines.</desc></programme>
+</tv>

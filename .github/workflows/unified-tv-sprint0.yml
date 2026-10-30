@@ -1,0 +1,23 @@
+name: Unified TV synthetic qualification
+on:
+  pull_request:
+    paths:
+      - 'tools/unified-tv/**'
+      - 'docs/product/unified-tv-*.md'
+      - '.plans/*unified-tv*'
+      - '.github/workflows/unified-tv-sprint0.yml'
+  workflow_dispatch:
+jobs:
+  synthetic-qualification:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+      - name: Validate synthetic fixtures and query suite
+        run: node --test tools/unified-tv/evaluate.test.mjs
+      - name: Emit fixture-only reference metrics
+        run: node tools/unified-tv/evaluate.mjs

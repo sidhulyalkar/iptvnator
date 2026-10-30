@@ -1,0 +1,181 @@
+{
+  "fixtureOnly": true,
+  "referenceTime": "2026-11-01T18:30:00Z",
+  "sources": [
+    {
+      "id": "source-m3u",
+      "kind": "m3u"
+    },
+    {
+      "id": "source-xtream",
+      "kind": "xtream"
+    },
+    {
+      "id": "source-stalker",
+      "kind": "stalker"
+    }
+  ],
+  "channels": [
+    {
+      "id": "m3u-gridiron",
+      "sourceId": "source-m3u",
+      "providerChannelId": "101",
+      "tvgId": "gridiron.example",
+      "title": "Gridiron One",
+      "aliases": [
+        "G1"
+      ],
+      "playbackStatus": "unknown"
+    },
+    {
+      "id": "xtream-gridiron",
+      "sourceId": "source-xtream",
+      "providerChannelId": "9001",
+      "tvgId": "gridiron.example",
+      "title": "Gridiron One HD",
+      "aliases": [],
+      "playbackStatus": "unknown"
+    },
+    {
+      "id": "stalker-gridiron",
+      "sourceId": "source-stalker",
+      "providerChannelId": "51",
+      "tvgId": "gridiron.example",
+      "title": "Gridiron Alternate",
+      "aliases": [],
+      "playbackStatus": "unknown"
+    },
+    {
+      "id": "m3u-soccer",
+      "sourceId": "source-m3u",
+      "providerChannelId": "102",
+      "tvgId": "soccer.example",
+      "title": "World Football",
+      "aliases": [],
+      "playbackStatus": "unknown"
+    },
+    {
+      "id": "m3u-entertainment",
+      "sourceId": "source-m3u",
+      "providerChannelId": "103",
+      "tvgId": "drama.example",
+      "title": "Drama Lab",
+      "aliases": [],
+      "playbackStatus": "unknown"
+    },
+    {
+      "id": "m3u-science",
+      "sourceId": "source-m3u",
+      "providerChannelId": "104",
+      "tvgId": "science.example",
+      "title": "Discovery Lab",
+      "aliases": [],
+      "playbackStatus": "unknown"
+    },
+    {
+      "id": "m3u-news",
+      "sourceId": "source-m3u",
+      "providerChannelId": "105",
+      "tvgId": "news.example",
+      "title": "Daily Update",
+      "aliases": [],
+      "playbackStatus": "unknown"
+    }
+  ],
+  "programs": [
+    {
+      "id": "event-packers-panthers",
+      "kind": "sports_event",
+      "title": "Packers vs Panthers",
+      "description": "Synthetic NFL football matchup for test use only",
+      "aliases": [
+        "Packers n Panthers",
+        "Panthers at Packers"
+      ],
+      "league": "NFL",
+      "sport": "football",
+      "start": "2026-11-01T18:00:00Z",
+      "end": "2026-11-01T21:00:00Z",
+      "channelIds": [
+        "m3u-gridiron",
+        "xtream-gridiron",
+        "stalker-gridiron"
+      ]
+    },
+    {
+      "id": "event-packers-lions",
+      "kind": "sports_event",
+      "title": "Packers at Lions",
+      "description": "Synthetic future NFL football matchup",
+      "aliases": [
+        "Green Bay Packers at Detroit Lions"
+      ],
+      "league": "NFL",
+      "sport": "football",
+      "start": "2026-11-08T18:00:00Z",
+      "end": "2026-11-08T21:00:00Z",
+      "channelIds": [
+        "m3u-gridiron"
+      ]
+    },
+    {
+      "id": "event-city-united",
+      "kind": "sports_event",
+      "title": "City FC vs United FC",
+      "description": "Synthetic live Premier League soccer match",
+      "aliases": [
+        "City versus United"
+      ],
+      "league": "Premier League",
+      "sport": "soccer",
+      "start": "2026-11-01T18:00:00Z",
+      "end": "2026-11-01T20:00:00Z",
+      "channelIds": [
+        "m3u-soccer"
+      ]
+    },
+    {
+      "id": "episode-orbit-203",
+      "kind": "episode",
+      "title": "Orbit Station: Signal",
+      "seriesTitle": "Orbit Station",
+      "description": "A fictional sci-fi crew decodes a mysterious message",
+      "season": 2,
+      "episode": 3,
+      "start": "2026-11-01T18:00:00Z",
+      "end": "2026-11-01T19:00:00Z",
+      "channelIds": [
+        "m3u-entertainment"
+      ]
+    },
+    {
+      "id": "program-ocean",
+      "kind": "program",
+      "title": "Ocean Currents",
+      "description": "Science documentary about ocean currents",
+      "aliases": [
+        "Ocean Current"
+      ],
+      "start": "2026-11-01T18:00:00Z",
+      "end": "2026-11-01T19:00:00Z",
+      "channelIds": [
+        "m3u-science"
+      ]
+    },
+    {
+      "id": "program-evening-news",
+      "kind": "program",
+      "title": "Evening News",
+      "description": "Local headlines and current events",
+      "aliases": [
+        "news at six",
+        "6 o'clock news"
+      ],
+      "start": "2026-11-01T18:00:00Z",
+      "end": "2026-11-01T19:00:00Z",
+      "channelIds": [
+        "m3u-news"
+      ]
+    }
+  ]
+}
