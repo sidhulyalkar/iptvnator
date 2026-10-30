@@ -86,8 +86,17 @@ describe('EpgProgramDiscoveryService', () => {
         expect(await discovery.search('news')).toEqual([]);
         expect(await discovery.search('live upcoming NFL')).toEqual([]);
         expect(await discovery.search('x'.repeat(201))).toEqual([]);
-        expect(await discovery.search('show me the game')).toEqual([]);
+        expect(await discovery.search('')).toEqual([]);
         expect(searchPrograms).toHaveBeenCalledTimes(1);
+    });
+
+    it('preserves legitimate titles that contain conversational words', async () => {
+        const titles = [makeProgram('The Game'), makeProgram('Live')];
+        searchPrograms.mockResolvedValue(titles);
+        expect(await discovery.search('The Game')).toEqual(titles);
+        expect(searchPrograms).toHaveBeenLastCalledWith('The Game', 20);
+        expect(await discovery.search('Live')).toEqual(titles);
+        expect(searchPrograms).toHaveBeenLastCalledWith('Live', 20);
     });
 
     it('does not open video, request channel links, or attach playback claims', async () => {

@@ -4,12 +4,6 @@ import { EpgRuntimeBridgeService } from './epg-runtime-bridge.service';
 
 const MAX_QUERY_LENGTH = 200;
 const MAX_CANDIDATES = 100;
-const STOP_WORDS = new Set([
-    'watch', 'find', 'show', 'me', 'the', 'a', 'an', 'game', 'games',
-    'please', 'right', 'now', 'live', 'currently', 'upcoming',
-]);
-const MATCHUP_CONNECTORS = new Set(['vs', 'v', 'versus', 'n']);
-
 export interface EpgDiscoverySearchOptions {
     /** Provider-clock milliseconds, not display-clock milliseconds. */
     nowMs?: number;
@@ -32,26 +26,39 @@ export class EpgProgramDiscoveryService {
         const trimmed = query.trim();
         if (!trimmed || trimmed.length > MAX_QUERY_LENGTH) return [];
 
-        const tokens = trimmed.split(/\s+/);
-        const liveOnly = tokens.some((part) =>
-            /^(?:now|live|currently)$/i.test(part)
+        // Only remove clearly spoken commands; "The Game" and "Live"
+        // are valid programme titles and must remain searchable.
+        let searchTerm = trimmed.replace(
+            /^(?:please\s+)?(?:(?:show|find)(?:\s+me)?|watch)\s+/i,
+            ''
         );
-        const upcomingOnly = tokens.some((part) =>
-            /^upcoming$/i.test(part)
-        );
+        let liveOnly = false;
+        let upcomingOnly = false;
+        // Temporal modifiers are recognized only at phrase boundaries.
+        // Consume multiple modifiers to reject contradictory requests.
+        for (let i = 0; i < 4; i++) {
+            const prefix = searchTerm.match(/^(live|currently|upcoming)\s+/i);
+            const suffix = searchTerm.match(/\s+(right now|live|currently|upcoming)$/i);
+            const token = prefix?.[1] ?? suffix?.[1];
+            if (!token) break;
+            if (/^upcoming$/i.test(token)) upcomingOnly = true;
+            else liveOnly = true;
+            searchTerm = prefix
+                ? searchTerm.slice(prefix[0].length)
+                : searchTerm.slice(0, -suffix![0].length);
+        }
         if (liveOnly && upcomingOnly) return [];
 
-        const cleaned = tokens
-            .map((part) => part.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ''))
-            .filter((part) => {
-                const lower = part.toLowerCase();
-                return (
-                    !STOP_WORDS.has(lower) &&
-                    !MATCHUP_CONNECTORS.has(lower)
-                );
-            })
-            .join(' ')
-            .trim();
+        // A spoken "n" or "versus" between teams is a separator, not
+        // a query term. Limit "game" removal to an explicit matchup.
+        const matchup = /\s+(?:vs\.?|v\.?|versus|n)\s+/i.test(searchTerm);
+        if (matchup) {
+            searchTerm = searchTerm.replace(
+                /\s+(?:vs\.?|v\.?|versus|n)\s+/gi,
+                ' '
+            ).replace(/\s+games?$/i, '');
+        }
+        const cleaned = searchTerm.trim().replace(/\s+/g, ' ');
         if (!cleaned) return [];
 
         const constrained = liveOnly || upcomingOnly;
