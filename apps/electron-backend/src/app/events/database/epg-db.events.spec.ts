@@ -75,7 +75,7 @@ describe('epg-db.events', () => {
         expect(all).not.toHaveBeenCalled();
     });
 
-    it('searches programmes with a LIKE pattern built from the trimmed term', async () => {
+    it('searches programmes using bound FTS tokens and keeps the existing response shape', async () => {
         const rows = [
             {
                 channel_id: 'nhk.jp',
@@ -116,7 +116,7 @@ describe('epg-db.events', () => {
             queryChunks?: unknown[];
         };
         const boundParams = JSON.stringify(query);
-        expect(boundParams).toContain('%news%');
+        expect(boundParams).toContain('"news"');
         expect(boundParams).toContain('25');
     });
 });
