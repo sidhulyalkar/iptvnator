@@ -1,18 +1,14 @@
 /**
- * EPG Database IPC event handlers
- *
- * Only the full-text programme search is exposed to the renderer
- * (`window.electron.searchEpgPrograms`). All other EPG persistence and
- * lookups run through the EPG worker (`workers/epg-database.ts`) and
- * `epg-query.service.ts` handlers registered in `epg.events.ts`.
+ * EPG programme search owned by Electron. The guide and playback bridge
+ * contracts remain unchanged; no player, stream URL, or source credential
+ * is accessed by this handler.
  */
-
 import { sql } from 'drizzle-orm';
 import { ipcMain } from 'electron';
 import type { ElectronBridgeEpgSearchProgram } from '@iptvnator/shared/interfaces';
 import { getDatabase } from '../../database/connection';
+import { planEpgSearch } from './epg-search-plan.util';
 
-/** Raw `epg_programs` columns as `db.all` returns them, plus the joined channel name. */
 interface EpgSearchRow {
     channel_id: string;
     start: string;
@@ -26,11 +22,6 @@ interface EpgSearchRow {
     channel_name: string | null;
 }
 
-/**
- * `db.all` hands back snake_case columns; the bridge promises the public
- * `EpgProgram` shape (`channel`, `desc`, `iconUrl`, …), so map here or every
- * consumer sees `program.channel === undefined`.
- */
 export function toSearchProgram(
     row: EpgSearchRow
 ): ElectronBridgeEpgSearchProgram {
@@ -50,44 +41,67 @@ export function toSearchProgram(
 
 const loggerLabel = '[EPG DB]';
 
-/**
- * Full-text search EPG programs using FTS5 with LIKE fallback
- * Handles Cyrillic and other Unicode text properly
- * Includes channel display name via JOIN
- */
 ipcMain.handle(
     'EPG_DB_SEARCH_PROGRAMS',
-    async (_event, searchTerm: string, limit = 50) => {
+    async (_event, searchTerm: unknown, requestedLimit: unknown = 50) => {
+        const plan = planEpgSearch(searchTerm, requestedLimit);
+        if (!plan) return [];
         try {
             const db = await getDatabase();
-            const trimmedTerm = searchTerm.trim();
-
-            if (!trimmedTerm) {
-                return [];
+            const nowIso = new Date().toISOString();
+            // FTS candidate filtering is index-backed. Time comparison is
+            // applied to the reduced result set; SQLite julianday() handles
+            // XMLTV instants that include UTC offsets.
+            const ordering = sql`
+                ORDER BY
+                    CASE
+                        WHEN julianday(p.start) <= julianday(${nowIso})
+                         AND julianday(p.stop) > julianday(${nowIso}) THEN 0
+                        WHEN julianday(p.start) > julianday(${nowIso}) THEN 1
+                        ELSE 2
+                    END,
+                    CASE
+                        WHEN julianday(p.start) > julianday(${nowIso})
+                            THEN julianday(p.start)
+                        ELSE -julianday(p.start)
+                    END,
+                    p.title COLLATE NOCASE,
+                    p.channel_id
+                LIMIT ${plan.limit}
+            `;
+            if (plan.ftsQuery !== null) {
+                try {
+                    const indexed = (await db.all(sql`
+                        SELECT p.*, c.display_name AS channel_name
+                        FROM epg_programs_fts
+                        JOIN epg_programs p ON p.id = epg_programs_fts.rowid
+                        LEFT JOIN epg_channels c ON p.channel_id = c.id
+                        WHERE epg_programs_fts MATCH ${plan.ftsQuery}
+                        ${ordering}
+                    `)) as EpgSearchRow[];
+                    if (indexed.length) return indexed.map(toSearchProgram);
+                } catch {
+                    // Legacy or corrupt FTS indexes must never disable
+                    // ordinary guide search. A LIKE fallback is slower but
+                    // preserves user access without doing a main-thread
+                    // index migration here.
+                }
             }
 
-            // Use LIKE for substring matching (works better with Cyrillic)
-            // This is more intuitive for users expecting exact substring matches
-            const likePattern = `%${trimmedTerm}%`;
-
-            // JOIN with epg_channels to get channel display name
-            // Include all programs (past and future) for catchup/archive feature
-            const results = (await db.all(sql`
-                SELECT
-                    p.*,
-                    c.display_name as channel_name
+            // Literal substring fallback covers partial words, scripts that
+            // FTS tokenizes differently, and legacy databases without a
+            // populated FTS index. Values remain bound parameters.
+            const escapeCharacter = '\\';
+            const fallback = (await db.all(sql`
+                SELECT p.*, c.display_name AS channel_name
                 FROM epg_programs p
                 LEFT JOIN epg_channels c ON p.channel_id = c.id
-                WHERE (
-                    p.title LIKE ${likePattern}
-                    OR p.description LIKE ${likePattern}
-                    OR p.category LIKE ${likePattern}
-                )
-                ORDER BY p.start
-                LIMIT ${limit}
+                WHERE p.title LIKE ${plan.likePattern} ESCAPE ${escapeCharacter}
+                   OR p.description LIKE ${plan.likePattern} ESCAPE ${escapeCharacter}
+                   OR p.category LIKE ${plan.likePattern} ESCAPE ${escapeCharacter}
+                ${ordering}
             `)) as EpgSearchRow[];
-
-            return results.map(toSearchProgram);
+            return fallback.map(toSearchProgram);
         } catch (error) {
             console.error(loggerLabel, 'Error searching EPG programs:', error);
             throw error;
