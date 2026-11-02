@@ -27,6 +27,18 @@ function fixture(): Database.Database {
             INSERT INTO epg_programs_fts(rowid, title, description, category)
             VALUES(new.id, new.title, new.description, new.category);
         END;
+        CREATE TRIGGER epg_programs_ad AFTER DELETE ON epg_programs BEGIN
+            INSERT INTO epg_programs_fts(
+                epg_programs_fts,rowid,title,description,category
+            ) VALUES('delete',old.id,old.title,old.description,old.category);
+        END;
+        CREATE TRIGGER epg_programs_au AFTER UPDATE ON epg_programs BEGIN
+            INSERT INTO epg_programs_fts(
+                epg_programs_fts,rowid,title,description,category
+            ) VALUES('delete',old.id,old.title,old.description,old.category);
+            INSERT INTO epg_programs_fts(rowid,title,description,category)
+            VALUES(new.id,new.title,new.description,new.category);
+        END;
     `);
     return db;
 }
@@ -76,6 +88,14 @@ describe('EPG FTS external-content integrity', () => {
     it('does not create the trusted marker when FTS repair cannot succeed', () => {
         db.exec('DROP TABLE epg_programs_fts;');
         expect(() => ensureEpgFtsIndex(db)).toThrow();
+        expect(db.prepare('SELECT value FROM app_state WHERE key = ?')
+            .get(EPG_FTS_INTEGRITY_KEY)).toBeUndefined();
+    });
+
+    it('refuses to mark the index trusted if a maintenance trigger is missing', () => {
+        db.exec('DROP TRIGGER epg_programs_au;');
+        expect(() => ensureEpgFtsIndex(db))
+            .toThrow('EPG FTS change triggers are incomplete');
         expect(db.prepare('SELECT value FROM app_state WHERE key = ?')
             .get(EPG_FTS_INTEGRITY_KEY)).toBeUndefined();
     });

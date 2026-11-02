@@ -28,6 +28,17 @@ export function ensureEpgFtsIndex(
     }
 
     return db.transaction(() => {
+        // A healthy index is not enough if subsequent programme writes
+        // bypass it. Validate the three production change triggers before
+        // establishing the durable trust marker.
+        const triggers = db.prepare(
+            "SELECT name FROM sqlite_master WHERE type = 'trigger' " +
+            "AND name IN ('epg_programs_ai','epg_programs_ad','epg_programs_au')"
+        ).all() as Array<{ name: string }>;
+        const names = new Set(triggers.map((row) => row.name));
+        if (names.size !== 3) {
+            throw new Error('EPG FTS change triggers are incomplete');
+        }
         const check = db.prepare(
             "INSERT INTO epg_programs_fts(epg_programs_fts, rank) " +
             "VALUES('integrity-check', 1)"
