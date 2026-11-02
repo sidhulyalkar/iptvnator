@@ -5,6 +5,7 @@
 - [x] Keep literal escaped LIKE fallback for partial, Unicode and legacy cases.
 - [x] Show now, upcoming, then archive; use offset-safe SQLite time parsing.
 - [x] Cap input and result counts, prevent SQL/FTS injection.
-- [x] Add real SQLite FTS5 test fixture covering boundaries and legacy fallback.
+- [x] Add real SQLite FTS5 test fixture covering boundaries, legacy fallback, and sparse historical index recall.
+- [ ] Require complete FTS index validation/backfill before promising exhaustive search results when the indexed first page is full.
 - [ ] Verify full backend CI and J3/J4 performance journeys.
 - [ ] Complete Codex/Greptile review gate, then reconcile upstream stack before merge.

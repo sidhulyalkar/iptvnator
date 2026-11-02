@@ -8,11 +8,11 @@ When FTS has no matches, is unavailable, or the query has unsupported token stru
 
 ## Important limits
 
-- The FTS index is not guaranteed to contain every historical row in old installations. This release uses a fallback when FTS is empty, **not** an exhaustive union of FTS and LIKE matches; a partially populated index can still omit older matches. A future maintenance job should reconcile/backfill the index off the rendering critical path.
+- The FTS index is not guaranteed to contain every historical row in old installations. When FTS returns **fewer than the requested limit**, indexed and literal-LIKE candidates are merged, deduplicated by database row ID, and time-ranked. However, when FTS already fills the page, unindexed rows can still be omitted. A complete correctness guarantee requires an asynchronous index reconciliation/backfill or a trusted completeness marker before FTS-first paging is enabled.
 - Time ranking uses the system's UTC clock. It doesn't receive the optional user-configured EPG display offset. The renderer's explicit live/upcoming filter still uses its corrected provider clock.
 - Matching programme metadata does not establish broadcasting rights, source authorization, decoded first frame, or stream readiness.
 - Search performance targets require actual J4 benchmarks with large authorized EPG data. No speculative performance claims or ratchet changes.
-- SQLite `julianday()` sorting happens after indexed FTS candidate selection; fallback LIKE remains comparatively expensive.
+- SQLite `julianday()` sorting happens after indexed FTS candidate selection; fallback LIKE remains comparatively expensive. Sparse-index repair trades some query cost for better recall. No quantitative speedup is established without J4 benchmarks.
 
 ## Verification
 

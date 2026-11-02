@@ -111,12 +111,13 @@ describe('epg-db.events', () => {
             },
         ]);
 
-        expect(all).toHaveBeenCalledTimes(1);
+        expect(all).toHaveBeenCalledTimes(2);
         const query = all.mock.calls[0][0] as {
             queryChunks?: unknown[];
         };
         const boundParams = JSON.stringify(query);
-        expect(boundParams).toContain('"news"');
+        expect(boundParams).toContain('news');
+        expect(boundParams).not.toContain('%news%');
         expect(boundParams).toContain('25');
     });
 });

@@ -139,6 +139,29 @@ describe('EPG ranked search using real SQLite/FTS5', () => {
             .toEqual(['NFL Record']);
     });
 
+
+    it('keeps live and archived rows visible when the historical FTS index is only partly populated', async () => {
+        // A legacy import can predate FTS5 creation. The indexed table must
+        // not hide its older rows when a later programme appears in FTS.
+        db.exec('DROP TRIGGER epg_programs_ai; DROP TABLE epg_programs_fts;');
+        add(db, 'NFL earlier', '2026-10-31T18:00:00Z',
+            '2026-10-31T21:00:00Z');
+        db.exec(`
+            CREATE VIRTUAL TABLE epg_programs_fts USING fts5(
+                title, description, category,
+                content='epg_programs', content_rowid='id'
+            );
+            CREATE TRIGGER epg_programs_ai AFTER INSERT ON epg_programs BEGIN
+                INSERT INTO epg_programs_fts(rowid,title,description,category)
+                VALUES(new.id,new.title,new.description,new.category);
+            END;
+        `);
+        add(db, 'NFL later', '2026-11-01T18:00:00Z',
+            '2026-11-01T21:00:00Z');
+        expect((await search({}, 'NFL', 20)).map((row) => row.title))
+            .toEqual(['NFL earlier', 'NFL later']);
+    });
+
     it('does not expose results from unrelated searches or return unbounded rows', async () => {
         for (let i=0;i<130;i++) {
             add(db,'NFL '+i,'2026-11-01T18:00:00Z','2026-11-01T21:00:00Z');

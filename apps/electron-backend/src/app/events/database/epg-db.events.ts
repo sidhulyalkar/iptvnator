@@ -10,6 +10,7 @@ import { getDatabase } from '../../database/connection';
 import { planEpgSearch } from './epg-search-plan.util';
 
 interface EpgSearchRow {
+    id: number;
     channel_id: string;
     start: string;
     stop: string;
@@ -39,6 +40,41 @@ export function toSearchProgram(
     };
 }
 
+
+/**
+ * Merge ranked FTS hits with bounded literal matches when fewer than one
+ * result page is indexed. Older databases may have created FTS5 after some
+ * EPG rows were imported, so a non-empty index alone is NOT complete proof.
+ */
+function mergeSparseIndexResults(
+    indexed: EpgSearchRow[],
+    fallback: EpgSearchRow[],
+    limit: number,
+    nowMs: number
+): EpgSearchRow[] {
+    const rows = new Map<string, EpgSearchRow>();
+    for (const row of [...indexed, ...fallback]) {
+        const key = typeof row.id === 'number'
+            ? String(row.id)
+            : JSON.stringify([row.channel_id, row.start, row.title]);
+        if (!rows.has(key)) rows.set(key, row);
+    }
+    const priority = (row: EpgSearchRow): [number, number] => {
+        const start = Date.parse(row.start);
+        const stop = Date.parse(row.stop);
+        if (Number.isFinite(start) && Number.isFinite(stop) &&
+            start <= nowMs && stop > nowMs) return [0, -start];
+        if (Number.isFinite(start) && start > nowMs) return [1, start];
+        return [2, Number.isFinite(start) ? -start : 0];
+    };
+    return [...rows.values()].sort((a, b) => {
+        const x = priority(a), y = priority(b);
+        return x[0] - y[0] || x[1] - y[1] ||
+            a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }) ||
+            a.channel_id.localeCompare(b.channel_id);
+    }).slice(0, limit);
+}
+
 const loggerLabel = '[EPG DB]';
 
 ipcMain.handle(
@@ -48,7 +84,8 @@ ipcMain.handle(
         if (!plan) return [];
         try {
             const db = await getDatabase();
-            const nowIso = new Date().toISOString();
+            const nowMs = Date.now();
+            const nowIso = new Date(nowMs).toISOString();
             // FTS candidate filtering is index-backed. Time comparison is
             // applied to the reduced result set; SQLite julianday() handles
             // XMLTV instants that include UTC offsets.
@@ -69,9 +106,10 @@ ipcMain.handle(
                     p.channel_id
                 LIMIT ${plan.limit}
             `;
+            let indexed: EpgSearchRow[] = [];
             if (plan.ftsQuery !== null) {
                 try {
-                    const indexed = (await db.all(sql`
+                    indexed = (await db.all(sql`
                         SELECT p.*, c.display_name AS channel_name
                         FROM epg_programs_fts
                         JOIN epg_programs p ON p.id = epg_programs_fts.rowid
@@ -79,7 +117,9 @@ ipcMain.handle(
                         WHERE epg_programs_fts MATCH ${plan.ftsQuery}
                         ${ordering}
                     `)) as EpgSearchRow[];
-                    if (indexed.length) return indexed.map(toSearchProgram);
+                    if (indexed.length >= plan.limit) {
+                        return indexed.map(toSearchProgram);
+                    }
                 } catch {
                     // Legacy or corrupt FTS indexes must never disable
                     // ordinary guide search. A LIKE fallback is slower but
@@ -101,7 +141,12 @@ ipcMain.handle(
                    OR p.category LIKE ${plan.likePattern} ESCAPE ${escapeCharacter}
                 ${ordering}
             `)) as EpgSearchRow[];
-            return fallback.map(toSearchProgram);
+            // A partially indexed historical guide can have newer rows in
+            // FTS and older rows only in the backing table. Keep both when
+            // the FTS page is short; never erase the indexed candidates.
+            return mergeSparseIndexResults(
+                indexed, fallback, plan.limit, nowMs
+            ).map(toSearchProgram);
         } catch (error) {
             console.error(loggerLabel, 'Error searching EPG programs:', error);
             throw error;
