@@ -59,8 +59,8 @@
                 </div>
             } @else {
                 <div class="epg-guide__search-count" role="status">
-                    {{ searchResults().length }}
                     {{ 'EPG.GUIDE.RESULTS_LABEL' | translate }}
+                    · {{ searchResults().length }}
                 </div>
                 @for (
                     hit of searchResults();
