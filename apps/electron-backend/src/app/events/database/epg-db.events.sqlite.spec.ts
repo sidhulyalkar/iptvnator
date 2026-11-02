@@ -29,6 +29,11 @@ function searchHandler(): SearchHandler {
 
 function populateFixture(db: Database.Database): void {
     db.exec(`
+        CREATE TABLE app_state (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+        INSERT INTO app_state(key,value) VALUES(
+            'epg:fts-external-content-integrity:v1',
+            'verified-external-content-v1'
+        );
         CREATE TABLE epg_channels (id TEXT PRIMARY KEY, display_name TEXT);
         CREATE TABLE epg_programs (
             id INTEGER PRIMARY KEY,
@@ -132,6 +137,26 @@ describe('EPG ranked search using real SQLite/FTS5', () => {
         add(db,'TestX1000','2026-10-31T18:00:00Z','2026-10-31T21:00:00Z');
         expect((await search({},'Test_100%',20)).map((h) => h.title))
             .toEqual(['Test_100%']);
+    });
+
+    it('uses full-table search when the FTS index has no trust marker, even for a full page', async () => {
+        db.exec(`
+            DELETE FROM app_state WHERE key =
+                'epg:fts-external-content-integrity:v1';
+            DROP TRIGGER epg_programs_ai;
+        `);
+        add(db,'NFL Live','2026-10-31T18:00:00Z','2026-10-31T21:00:00Z');
+        db.exec(`
+            CREATE TRIGGER epg_programs_ai AFTER INSERT ON epg_programs BEGIN
+                INSERT INTO epg_programs_fts(rowid,title,description,category)
+                VALUES(new.id,new.title,new.description,new.category);
+            END;
+        `);
+        for (let i = 0; i < 5; i++) {
+            add(db,'NFL Future ' + i,'2026-11-01T18:00:00Z','2026-11-01T21:00:00Z');
+        }
+        const result = await search({}, 'NFL', 5);
+        expect(result[0].title).toBe('NFL Live');
     });
 
     it('keeps search available when an older database lacks the FTS table', async () => {

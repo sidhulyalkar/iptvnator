@@ -8,6 +8,10 @@ import { ipcMain } from 'electron';
 import type { ElectronBridgeEpgSearchProgram } from '@iptvnator/shared/interfaces';
 import { getDatabase } from '../../database/connection';
 import { planEpgSearch } from './epg-search-plan.util';
+import {
+    EPG_FTS_INTEGRITY_KEY,
+    EPG_FTS_INTEGRITY_VALUE,
+} from '../../workers/epg-fts-integrity';
 
 interface EpgSearchRow {
     id: number;
@@ -123,8 +127,25 @@ ipcMain.handle(
                     p.channel_id
                 LIMIT ${plan.limit}
             `;
-            let indexed: EpgSearchRow[] = [];
+            // Do not trust a full MATCH page until the worker has verified
+            // that external-content FTS contains *all* pre-existing rows.
+            // Missing app_state/marker on older installations fails closed
+            // to the literal backing-table search, preserving recall.
+            let ftsTrusted = false;
             if (plan.ftsQuery !== null) {
+                try {
+                    const status = (await db.all(sql`
+                        SELECT value FROM app_state
+                        WHERE key = ${EPG_FTS_INTEGRITY_KEY}
+                    `)) as Array<{ value?: string }>;
+                    ftsTrusted =
+                        status[0]?.value === EPG_FTS_INTEGRITY_VALUE;
+                } catch {
+                    // A legacy database may not yet have app_state.
+                }
+            }
+            let indexed: EpgSearchRow[] = [];
+            if (ftsTrusted) {
                 try {
                     indexed = (await db.all(sql`
                         SELECT p.*, c.display_name AS channel_name
