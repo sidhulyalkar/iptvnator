@@ -116,6 +116,7 @@ describe('epg-db.events', () => {
             queryChunks?: unknown[];
         };
         const boundParams = JSON.stringify(query);
+        expect(boundParams).toContain('epg:fts-external-content-integrity:v1');
         expect(boundParams).toContain('news');
         expect(boundParams).not.toContain('%news%');
         expect(boundParams).toContain('25');

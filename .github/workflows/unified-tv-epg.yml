@@ -8,6 +8,9 @@ on:
       - 'libs/playlist/m3u/feature-player/**'
       - 'apps/electron-backend/src/app/events/database/epg-db.events*'
       - 'apps/electron-backend/src/app/events/database/epg-search-plan.util*'
+      - 'apps/electron-backend/src/app/workers/epg-fts-integrity*'
+      - 'apps/electron-backend/src/app/workers/epg-database.ts'
+      - 'apps/electron-backend/src/app/workers/epg-parser.worker.ts'
       - '.github/workflows/unified-tv-epg.yml'
   workflow_dispatch:
 
