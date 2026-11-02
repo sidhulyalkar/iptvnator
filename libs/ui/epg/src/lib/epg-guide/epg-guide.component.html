@@ -38,7 +38,6 @@
             role="region"
             [attr.aria-label]="'EPG.GUIDE.SEARCH_PROGRAMMES' | translate"
             [attr.aria-busy]="searchStatus() === 'loading'"
-            (keydown)="onSearchResultsKeydown($event)"
         >
             @if (searchStatus() === 'loading') {
                 <div class="epg-guide__search-empty" role="status">
@@ -70,6 +69,7 @@
                         type="button"
                         class="epg-guide__search-result"
                         (click)="openSearchResult(hit)"
+                        (keydown)="onSearchResultsKeydown($event)"
                     >
                         <span class="epg-guide__search-title">{{
                             hit.program.title
