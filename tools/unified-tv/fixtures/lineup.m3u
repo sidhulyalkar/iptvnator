@@ -1,0 +1,11 @@
+#EXTM3U
+#EXTINF:-1 tvg-id="gridiron.example" tvg-name="Gridiron One" group-title="Sports",Gridiron One
+https://example.invalid/live/gridiron.m3u8
+#EXTINF:-1 tvg-id="soccer.example" tvg-name="World Football" group-title="Sports",World Football
+https://example.invalid/live/soccer.m3u8
+#EXTINF:-1 tvg-id="drama.example" group-title="Entertainment",Drama Lab
+https://example.invalid/live/drama.m3u8
+#EXTINF:-1 tvg-id="science.example" group-title="Documentary",Discovery Lab
+https://example.invalid/live/science.m3u8
+#EXTINF:-1 tvg-id="news.example" group-title="News",Daily Update
+https://example.invalid/live/news.m3u8
