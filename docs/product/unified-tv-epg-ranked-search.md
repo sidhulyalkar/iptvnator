@@ -17,3 +17,7 @@ When FTS has no matches, is unavailable, or the query has unsupported token stru
 ## Verification
 
 Run backend unit/in-memory SQLite tests, backend and spec typechecking, and lint. Verify J4 and J3 performance journeys and live-guide accessibility on actual desktop hardware before merging.
+
+### Operational rollback
+
+Set `IPTVNATOR_EPG_SEARCH_LEGACY=1` **before launching Electron** to disable the indexed live-first search and use the historical oldest-first literal substring ordering. It retains the safety bounds and LIKE escaping. This is a temporary kill switch; remove it within two releases after the EPG ranking change is proven. No database reset or EPG re-import is required to roll back the search behavior.

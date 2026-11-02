@@ -86,6 +86,23 @@ ipcMain.handle(
             const db = await getDatabase();
             const nowMs = Date.now();
             const nowIso = new Date(nowMs).toISOString();
+            // Emergency rollback switch for search-ranking regressions.
+            // This reproduces the historical oldest-first ordering, without
+            // relaxing bounded input or SQL parameterization.
+            const escapeCharacter = '\\';
+            if (process.env.IPTVNATOR_EPG_SEARCH_LEGACY === '1') {
+                const legacy = (await db.all(sql`
+                    SELECT p.*, c.display_name AS channel_name
+                    FROM epg_programs p
+                    LEFT JOIN epg_channels c ON p.channel_id = c.id
+                    WHERE p.title LIKE ${plan.likePattern} ESCAPE ${escapeCharacter}
+                       OR p.description LIKE ${plan.likePattern} ESCAPE ${escapeCharacter}
+                       OR p.category LIKE ${plan.likePattern} ESCAPE ${escapeCharacter}
+                    ORDER BY p.start
+                    LIMIT ${plan.limit}
+                `)) as EpgSearchRow[];
+                return legacy.map(toSearchProgram);
+            }
             // FTS candidate filtering is index-backed. Time comparison is
             // applied to the reduced result set; SQLite julianday() handles
             // XMLTV instants that include UTC offsets.
@@ -131,7 +148,6 @@ ipcMain.handle(
             // Literal substring fallback covers partial words, scripts that
             // FTS tokenizes differently, and legacy databases without a
             // populated FTS index. Values remain bound parameters.
-            const escapeCharacter = '\\';
             const fallback = (await db.all(sql`
                 SELECT p.*, c.display_name AS channel_name
                 FROM epg_programs p

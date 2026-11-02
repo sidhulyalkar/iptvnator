@@ -77,6 +77,7 @@ describe('EPG ranked search using real SQLite/FTS5', () => {
     beforeEach(async () => {
         jest.resetModules();
         jest.useFakeTimers().setSystemTime(new Date('2026-10-31T18:30:00Z'));
+        delete process.env.IPTVNATOR_EPG_SEARCH_LEGACY;
         getDatabase.mockReset();
         const { ipcMain } = jest.requireMock('electron') as {
             ipcMain: { handle: jest.Mock };
@@ -91,6 +92,7 @@ describe('EPG ranked search using real SQLite/FTS5', () => {
     });
 
     afterEach(() => {
+        delete process.env.IPTVNATOR_EPG_SEARCH_LEGACY;
         db.close();
         jest.useRealTimers();
     });
@@ -160,6 +162,17 @@ describe('EPG ranked search using real SQLite/FTS5', () => {
             '2026-11-01T21:00:00Z');
         expect((await search({}, 'NFL', 20)).map((row) => row.title))
             .toEqual(['NFL earlier', 'NFL later']);
+    });
+
+    it('can roll back indexed live-first behavior without changing the player', async () => {
+        add(db,'NFL Archive','2026-10-20T18:00:00Z','2026-10-20T21:00:00Z');
+        add(db,'NFL Live','2026-10-31T18:00:00Z','2026-10-31T21:00:00Z');
+        process.env.IPTVNATOR_EPG_SEARCH_LEGACY = '1';
+        expect((await search({},'NFL',20)).map((row) => row.title))
+            .toEqual(['NFL Archive','NFL Live']);
+        delete process.env.IPTVNATOR_EPG_SEARCH_LEGACY;
+        expect((await search({},'NFL',20)).map((row) => row.title))
+            .toEqual(['NFL Live','NFL Archive']);
     });
 
     it('does not expose results from unrelated searches or return unbounded rows', async () => {
