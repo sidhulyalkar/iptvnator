@@ -87,6 +87,7 @@ the subsystem's document.
   `libs/ui/components/src/lib/channel-list-container/channel-list-item/channel-list-item.component.html`
 - Channel row styles:
   `libs/ui/components/src/lib/channel-list-container/channel-list-item/channel-list-item.component.scss`
+- Programme guide search interactions: [Minimal guide search UI](../../docs/product/unified-tv-guide-search-ui.md) (loading/error/empty states, result focus, guide-only metadata).
 - Shared EPG timeline:
   `libs/ui/epg/src/lib/epg-timeline/epg-timeline.component.html`
 - Shared EPG timeline styles:

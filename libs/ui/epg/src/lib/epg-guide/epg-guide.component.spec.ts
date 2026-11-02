@@ -506,4 +506,81 @@ describe('EpgGuideComponent', () => {
                 .nativeElement.textContent
         ).toContain(`${pad(shifted.getHours())}:${pad(shifted.getMinutes())}`);
     });
+    it('shows honest loading, error, and retry states without disturbing the guide', async () => {
+        await settle(fixture);
+        component.onSearchQueryChange('NFL');
+        fixture.detectChanges();
+        let panel: HTMLElement = fixture.debugElement.query(
+            By.css('.epg-guide__search-results')
+        ).nativeElement;
+        expect(panel.getAttribute('role')).toBe('region');
+        expect(panel.getAttribute('aria-busy')).toBe('true');
+        expect(panel.textContent).toContain('LOADING');
+        expect(panel.textContent).not.toContain('EPG.GUIDE.NO_RESULTS');
+
+        component.searchStatus.set('error');
+        fixture.detectChanges();
+        panel = fixture.debugElement.query(
+            By.css('.epg-guide__search-results')
+        ).nativeElement;
+        expect(panel.textContent).toContain('EPG.GUIDE.SEARCH_FAILED');
+        const retry: HTMLButtonElement = panel.querySelector(
+            '.epg-guide__search-retry'
+        ) as HTMLButtonElement;
+        retry.click();
+        expect(component.searchStatus()).toBe('loading');
+        expect(activate).not.toHaveBeenCalled();
+    });
+
+    it('renders unbound guide hits without pretending a playable channel exists', async () => {
+        await settle(fixture);
+        component.onSearchQueryChange('NFL');
+        component.searchResults.set([{
+            channelId: null,
+            channelName: 'Guide Network',
+            program: nowProgram('missing'),
+        }]);
+        component.searchStatus.set('ready');
+        fixture.detectChanges();
+        const panel: HTMLElement = fixture.debugElement.query(
+            By.css('.epg-guide__search-results')
+        ).nativeElement;
+        expect(panel.getAttribute('aria-busy')).toBe('false');
+        expect(panel.textContent).toContain('Guide Network');
+        expect(panel.textContent).toContain('EPG.GUIDE.CHANNEL_NOT_IN_LIST');
+        expect(panel.querySelector('[role="option"]')).toBeNull();
+        expect(activate).not.toHaveBeenCalled();
+    });
+
+    it('moves focus into search results and back without hijacking Tab', async () => {
+        await settle(fixture);
+        component.onSearchQueryChange('NFL');
+        component.searchResults.set([
+            { channelId: 'a', program: nowProgram('a') },
+            { channelId: 'c', program: nowProgram('c') },
+        ]);
+        component.searchStatus.set('ready');
+        await settle(fixture);
+        const input: HTMLInputElement = fixture.debugElement.query(
+            By.css('.guide-toolbar__input--search input')
+        ).nativeElement;
+        input.focus();
+        input.dispatchEvent(new KeyboardEvent('keydown', {
+            key: 'ArrowDown', bubbles: true, cancelable: true,
+        }));
+        const buttons: HTMLButtonElement[] = Array.from(
+            fixture.nativeElement.querySelectorAll('.epg-guide__search-result')
+        );
+        expect(document.activeElement).toBe(buttons[0]);
+        buttons[0].dispatchEvent(new KeyboardEvent('keydown', {
+            key: 'ArrowDown', bubbles: true, cancelable: true,
+        }));
+        expect(document.activeElement).toBe(buttons[1]);
+        buttons[1].dispatchEvent(new KeyboardEvent('keydown', {
+            key: 'Escape', bubbles: true, cancelable: true,
+        }));
+        expect(document.activeElement).toBe(input);
+        expect(activate).not.toHaveBeenCalled();
+    });
+
 });

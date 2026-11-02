@@ -122,6 +122,7 @@ export class EpgGuideComponent implements OnDestroy {
     readonly searchEnabled = this.search.enabled;
     readonly searchQuery = this.search.query;
     readonly searchResults = this.search.results;
+    readonly searchStatus = this.search.status;
     readonly searchPanelVisible = this.search.panelVisible;
     readonly catchUpAvailable = this.source.catchUp !== undefined;
     readonly channelColumnPx = EPG_GUIDE_CHANNEL_COLUMN_PX;
@@ -332,6 +333,46 @@ export class EpgGuideComponent implements OnDestroy {
 
     onSearchQueryChange(query: string): void {
         this.search.setQuery(query);
+    }
+
+    /** Retry the current term without changing scope or playback. */
+    retrySearch(): void {
+        this.search.setQuery(this.searchQuery());
+    }
+
+    /** Down from the search field enters the first actionable result. */
+    focusFirstSearchResult(): void {
+        this.hostElement.nativeElement
+            .querySelector<HTMLButtonElement>('.epg-guide__search-result')
+            ?.focus();
+    }
+
+    /** Native buttons retain Tab/Enter. Arrows are only a convenience. */
+    onSearchResultsKeydown(event: KeyboardEvent): void {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            this.hostElement.nativeElement
+                .querySelector<HTMLInputElement>(
+                    '.guide-toolbar__input--search input'
+                )?.focus();
+            return;
+        }
+        if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+        const buttons = Array.from(
+            this.hostElement.nativeElement.querySelectorAll<HTMLButtonElement>(
+                '.epg-guide__search-result'
+            )
+        );
+        const button = (event.target as HTMLElement).closest(
+            '.epg-guide__search-result'
+        );
+        const current = buttons.indexOf(button as HTMLButtonElement);
+        if (current < 0 || buttons.length === 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const direction = event.key === 'ArrowDown' ? 1 : -1;
+        buttons[(current + direction + buttons.length) % buttons.length].focus();
     }
 
     openSearchResult(hit: EpgGuideSearchHit): void {

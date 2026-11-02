@@ -75,4 +75,71 @@ describe('EpgGuideSearchController request ownership', () => {
         jest.advanceTimersByTime(300);
         expect(controller.results()).toEqual([]);
     });
+    it('keeps loading distinct from no results and reports valid empty results', async () => {
+        const controller = new EpgGuideSearchController(async () => []);
+        controller.setQuery('NFL');
+        expect(controller.status()).toBe('loading');
+        expect(controller.results()).toEqual([]);
+        jest.advanceTimersByTime(300);
+        await flush();
+        expect(controller.status()).toBe('ready');
+        expect(controller.panelVisible()).toBe(true);
+        controller.destroy();
+    });
+
+    it('displays a failure without claiming no matching programmes exist', async () => {
+        const controller = new EpgGuideSearchController(async () => {
+            throw new Error('Synthetic EPG outage');
+        });
+        controller.setQuery('NFL');
+        jest.advanceTimersByTime(300);
+        await flush();
+        expect(controller.status()).toBe('error');
+        expect(controller.results()).toEqual([]);
+        controller.setQuery('');
+        expect(controller.status()).toBe('idle');
+        expect(controller.panelVisible()).toBe(false);
+        controller.destroy();
+    });
+
+    it('never exposes results for the previous query during debounce', async () => {
+        const controller = new EpgGuideSearchController(async (term) =>
+            [hit(term)]
+        );
+        controller.setQuery('NFL');
+        jest.advanceTimersByTime(300);
+        await flush();
+        expect(controller.results().map((x) => x.program.title)).toEqual(['NFL']);
+        controller.setQuery('NBA');
+        expect(controller.status()).toBe('loading');
+        expect(controller.results()).toEqual([]);
+        jest.advanceTimersByTime(300);
+        await flush();
+        expect(controller.results().map((x) => x.program.title)).toEqual(['NBA']);
+        controller.destroy();
+    });
+
+    it('does not let an older failure replace a newer success', async () => {
+        const resolutions: Array<{
+            resolve: (hits: EpgGuideSearchHit[]) => void;
+            reject: (error: Error) => void;
+        }> = [];
+        const controller = new EpgGuideSearchController(
+            () => new Promise((resolve, reject) => resolutions.push({
+                resolve, reject,
+            }))
+        );
+        controller.setQuery('NFL');
+        jest.advanceTimersByTime(300);
+        controller.setQuery('NHL');
+        jest.advanceTimersByTime(300);
+        resolutions[1].resolve([hit('NHL')]);
+        await flush();
+        resolutions[0].reject(new Error('late failure'));
+        await flush();
+        expect(controller.status()).toBe('ready');
+        expect(controller.results()[0].program.title).toBe('NHL');
+        controller.destroy();
+    });
+
 });
