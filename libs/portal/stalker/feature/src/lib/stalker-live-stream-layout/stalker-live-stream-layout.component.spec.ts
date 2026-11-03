@@ -467,6 +467,24 @@ describe('StalkerLiveStreamLayoutComponent', () => {
         expect(stalkerStore.addToFavorites).toHaveBeenCalledTimes(2);
     });
 
+    it('keeps radio favorite marks without importing ITV favorites', () => {
+        playlistService.getPortalFavorites.mockReturnValueOnce(
+            of([
+                { id: 'radio-1', category_id: 'radio' },
+                { id: '10001', category_id: 'itv' },
+                { id: 'movie-1', category_id: 'vod' },
+            ])
+        );
+        stalkerStore.selectedContentType.set('radio');
+        selectedCategoryId.set('radio-all');
+        fixture.detectChanges();
+
+        expect(component.favorites.has('radio-1')).toBe(true);
+        expect(component.favorites.has('10001')).toBe(false);
+        expect(component.favorites.has('movie-1')).toBe(false);
+        expect(component.activeFavoriteTarget()).toBeNull();
+    });
+
     it('does not request or render EPG without a portal transport', async () => {
         fixture.destroy();
         // This spec's runtime stub derives every flag from window.electron,
