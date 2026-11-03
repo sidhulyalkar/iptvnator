@@ -49,8 +49,16 @@ the collection's existing `favoriteToggled` event and confirmed favorite
 UID state. The accessible label includes sanitized playlist provenance so
 duplicate channel names are distinguishable. It is hidden for pending changes, vanished catalog items and the
 Favorites-only route, which currently unmounts playback on active-item removal.
-This is not a second persistence service. Dedicated per-source live views and
-radio controls remain separate follow-ups.
+This is not a second persistence service. The same presentation-only action is shared with the dedicated Xtream Live
+player. Xtream obtains status from the persisted favorites snapshot, verifies
+add/remove after the existing store operation, and sends the confirmed state
+through `XtreamFavoriteMarksService` to the sidebar and fullscreen list.
+When saved state cannot be read, the icon offers read-only Retry instead of
+silently toggling an unknown favorite. The player favorite is scoped to its
+committed playback identity, not the sidebar highlight.
+
+Dedicated Stalker and M3U live views, and radio controls, remain separate
+follow-ups.
 
 The staged frontend configuration and experience roadmap is recorded in
 [Unified TV frontend configuration](../../.plans/2026-11-03-unified-tv-frontend-configuration.md).
