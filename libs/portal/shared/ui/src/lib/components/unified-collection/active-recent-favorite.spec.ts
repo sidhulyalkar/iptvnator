@@ -59,5 +59,13 @@ describe('resolveActiveRecentFavorite', () => {
             ...context,
             items: [{ ...active, sourceType: 'stalker' }],
         })).toBeNull();
+        expect(resolveActiveRecentFavorite({
+            ...context,
+            items: [{ ...active, catalogStatus: 'missing' }],
+        })).toBeNull();
+        expect(resolveActiveRecentFavorite({
+            ...context,
+            items: [{ ...active, catalogStatus: 'unknown' }],
+        })).toBeNull();
     });
 });

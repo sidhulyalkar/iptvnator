@@ -103,9 +103,11 @@ describe('UnifiedLiveTab active-player favorite action', () => {
 
     afterEach(() => fixture.destroy());
 
-    it('emits only the committed recent channel and follows confirmed favorite state', () => {
+    it.each(['m3u', 'xtream', 'stalker'] as const)(
+        'emits the committed %s channel and follows saved favorite state',
+        (sourceType) => {
         const item = {
-            ...buildLiveItem('xtream'),
+            ...buildLiveItem(sourceType),
             playlistName: 'https://user:secret@panel.example.com/list?key=SECRET',
         };
         const emitted: UnifiedCollectionItem[] = [];
@@ -115,7 +117,7 @@ describe('UnifiedLiveTab active-player favorite action', () => {
         component.activeItem.set(item);
         component.activeDetail.set({
             playback: { streamUrl: 'https://example.test/live.ts', title: item.name },
-            epgMode: 'portal',
+            epgMode: sourceType === 'm3u' ? 'm3u' : 'portal',
         });
         fixture.detectChanges();
 
@@ -146,7 +148,8 @@ describe('UnifiedLiveTab active-player favorite action', () => {
                 '[data-test-id="active-recent-favorite"]'
             )
         ).toBeNull();
-    });
+        }
+    );
 
     it('does not put a favorite button on the Favorites-only player', () => {
         const item = buildLiveItem('stalker');
