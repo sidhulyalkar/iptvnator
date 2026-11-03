@@ -231,4 +231,17 @@ describe('ElectronStreamHeadersService', () => {
         );
     });
 
+    it('requires positive IPC acknowledgment before the player can mount', async () => {
+        const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+        try {
+            setUserAgent.mockResolvedValue(false);
+            await expect(service.apply(GATED_PLAYBACK)).resolves.toBe(false);
+            expect(warn).toHaveBeenCalledWith(
+                '[ElectronStreamHeaders] Request-header setup failed'
+            );
+        } finally {
+            warn.mockRestore();
+        }
+    });
+
 });

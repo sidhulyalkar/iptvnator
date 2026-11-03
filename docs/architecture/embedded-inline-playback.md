@@ -985,7 +985,8 @@ handoff now produces a sanitized, retryable unknown-playback diagnostic instead
 of a blank player: neither the setup exception nor source URL/credentials are
 retained in that diagnostic. The UI uses existing localized stream-loading
 copy, because the failure can precede creation of a browser media engine. The header bridge itself fails closed rather than
-treating IPC rejection as a successful override installation. Its 15-second
+treating a negative IPC acknowledgment or rejection as a successful override
+installation. Its 15-second
 IPC deadline also settles an unresponsive header setup without waiting
 indefinitely, and a superseded handoff unblocks immediately. The deadline is
 independent of stream resolution and the eventual first playable frame. A stale success,

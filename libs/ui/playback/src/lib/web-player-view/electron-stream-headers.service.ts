@@ -73,7 +73,7 @@ export class ElectronStreamHeadersService {
 
         this.currentScopeUrl = playback.streamUrl;
         // Do not log raw IPC exceptions: they can contain portal credentials.
-        let ipc: Promise<unknown>;
+        let ipc: Promise<boolean>;
         try {
             ipc = window.electron.setUserAgent(
                 userAgent,
@@ -115,7 +115,8 @@ export class ElectronStreamHeadersService {
             );
             this.cancelPendingApply = cancel;
             void Promise.resolve(ipc).then(
-                () => settle(true),
+                (acknowledged) =>
+                    settle(acknowledged === true, acknowledged !== true),
                 () => settle(false, true)
             );
         });
