@@ -1,4 +1,7 @@
-import { isCatalogUnavailable } from '@iptvnator/shared/interfaces';
+import {
+    isCatalogUnavailable,
+    playlistDisplayLabel,
+} from '@iptvnator/shared/interfaces';
 import {
     ChangeDetectionStrategy,
     Component,
@@ -167,6 +170,9 @@ export class UnifiedLiveTabComponent implements FullscreenChannelPanelHost {
             hasActiveDetail: this.activeDetail() !== null,
             selectionPending: this.isSelecting(),
         })
+    );
+    readonly activeRecentFavoriteSourceLabel = computed(() =>
+        playlistDisplayLabel(this.activeRecentFavorite()?.playlistName)
     );
     /** Catch-up override for the active channel; null = live playback. */
     readonly activeTimeshift = signal<UnifiedLiveTimeshift | null>(null);

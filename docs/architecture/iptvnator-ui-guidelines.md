@@ -46,7 +46,8 @@ Use it when changing existing views or introducing new list-based UI in the work
 The Recently Viewed inline video player also exposes a compact, accessible
 favorite action for its **committed** M3U, Xtream or Stalker selection, reusing
 the collection's existing `favoriteToggled` event and confirmed favorite
-UID state. It is hidden for pending changes, vanished catalog items and the
+UID state. The accessible label includes sanitized playlist provenance so
+duplicate channel names are distinguishable. It is hidden for pending changes, vanished catalog items and the
 Favorites-only route, which currently unmounts playback on active-item removal.
 This is not a second persistence service. Dedicated per-source live views and
 radio controls remain separate follow-ups.

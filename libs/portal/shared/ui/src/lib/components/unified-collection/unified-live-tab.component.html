@@ -73,7 +73,9 @@
                                     ? 'CHANNELS.REMOVE_FAVORITE'
                                     : 'CHANNELS.ADD_FAVORITE') | translate) +
                                 ': ' +
-                                activeFavorite.name
+                                activeFavorite.name +
+                                ' · ' +
+                                activeRecentFavoriteSourceLabel()
                             "
                             (click)="toggleActiveRecentFavorite()"
                         >

@@ -104,7 +104,10 @@ describe('UnifiedLiveTab active-player favorite action', () => {
     afterEach(() => fixture.destroy());
 
     it('emits only the committed recent channel and follows confirmed favorite state', () => {
-        const item = buildLiveItem('xtream');
+        const item = {
+            ...buildLiveItem('xtream'),
+            playlistName: 'https://user:secret@panel.example.com/list?key=SECRET',
+        };
         const emitted: UnifiedCollectionItem[] = [];
         component.favoriteToggled.subscribe((value) => emitted.push(value));
         fixture.componentRef.setInput('items', [item]);
@@ -122,6 +125,9 @@ describe('UnifiedLiveTab active-player favorite action', () => {
         expect(button).not.toBeNull();
         expect(button.getAttribute('aria-pressed')).toBe('false');
         expect(button.getAttribute('aria-label')).toContain(item.name);
+        expect(button.getAttribute('aria-label')).toContain('panel.example.com');
+        expect(button.getAttribute('aria-label')).not.toContain('secret');
+        expect(button.getAttribute('aria-label')).not.toContain('SECRET');
         button.click();
         expect(emitted).toEqual([item]);
         // A click alone does not claim persistence succeeded.
