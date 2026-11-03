@@ -45,7 +45,9 @@ import {
     StubPortalEmptyStateComponent,
     StubResizableDirective,
     StubWebPlayerViewComponent,
+    StubStalkerLivePlayerFavoriteComponent,
 } from './stalker-live-stream-layout.spec-stubs';
+import { StalkerLivePlayerFavoriteComponent } from './stalker-live-player-favorite.component';
 
 /** Installs an intentionally partial Electron bridge double. */
 function installElectronBridge(bridge: Partial<ElectronBridgeApi>): void {
@@ -344,6 +346,7 @@ describe('StalkerLiveStreamLayoutComponent', () => {
                         ResizableDirective,
                         TranslatePipe,
                         WebPlayerViewComponent,
+                        StalkerLivePlayerFavoriteComponent,
                     ],
                 },
                 add: {
@@ -358,6 +361,7 @@ describe('StalkerLiveStreamLayoutComponent', () => {
                             (value: string | null | undefined) => value ?? ''
                         ),
                         StubWebPlayerViewComponent,
+                        StubStalkerLivePlayerFavoriteComponent,
                     ],
                 },
             })
@@ -419,6 +423,16 @@ describe('StalkerLiveStreamLayoutComponent', () => {
         await fixture.whenStable();
         fixture.detectChanges();
 
+        const favorite = fixture.debugElement.query(
+            By.directive(StubStalkerLivePlayerFavoriteComponent)
+        ).componentInstance as StubStalkerLivePlayerFavoriteComponent;
+        expect(favorite.target()).toEqual(
+            expect.objectContaining({
+                playlistId: 'playlist-1',
+                channelId: '10001',
+                channelName: 'Alpha TV',
+            })
+        );
         expect(ensureBulkItvEpg).not.toHaveBeenCalled();
         expect(fetchChannelEpg).not.toHaveBeenCalled();
         expect(
