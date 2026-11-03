@@ -151,6 +151,29 @@ describe('XtreamLivePlayerFavoriteComponent', () => {
         subscription.unsubscribe();
     });
 
+    it('offers read-only Retry after an initial favorite load error', async () => {
+        favorites.getFavorites.mockImplementationOnce(() => {
+            throw new Error('cannot load saved state');
+        });
+        fixture.componentRef.setInput('target', {
+            ...news,
+            xtreamId: 99,
+            channelName: 'Other Channel',
+        });
+        expect(() => fixture.detectChanges()).not.toThrow();
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(star().getAttribute('aria-pressed')).toBeNull();
+        expect(star().disabled).toBe(false);
+        expect(star().querySelector('mat-icon')?.textContent).toContain('refresh');
+
+        star().click();
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(store.toggleFavorite).not.toHaveBeenCalled();
+        expect(star().getAttribute('aria-pressed')).toBe('false');
+    });
+
     it('tracks a favorite toggled in another sidebar panel', () => {
         marks.notify({
             playlistId: 'source-1',

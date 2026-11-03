@@ -8,7 +8,7 @@ import {
     input,
     signal,
 } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { defer, firstValueFrom } from 'rxjs';
 import {
     FavoritesService,
     XtreamStore,
@@ -60,9 +60,9 @@ export class XtreamLivePlayerFavoriteComponent {
                 this.retryable.set(false);
                 this.storedFavorite.set(change.isFavorite);
             });
-            const initialSubscription = this.favorites
-                .getFavorites(target.playlistId)
-                .subscribe({
+            const initialSubscription = defer(() =>
+                this.favorites.getFavorites(target.playlistId)
+            ).subscribe({
                     next: (saved) => {
                         if (current && !markSeen) {
                             this.retryable.set(false);
