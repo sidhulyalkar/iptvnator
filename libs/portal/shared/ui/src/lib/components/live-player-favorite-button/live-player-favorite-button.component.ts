@@ -24,14 +24,22 @@ export class LivePlayerFavoriteButtonComponent {
     readonly isFavorite = input(false);
     readonly known = input(true);
     readonly pending = input(false);
+    /** An unknown saved state may offer a read-only Retry, never a toggle. */
+    readonly retryable = input(false);
     readonly testId = input('live-player-favorite');
     readonly toggleRequested = output<void>();
+    readonly retryRequested = output<void>();
 
     readonly sourceLabel = computed(() =>
         playlistDisplayLabel(this.sourceName())
     );
 
-    toggle(): void {
-        if (this.known() && !this.pending()) this.toggleRequested.emit();
+    activate(): void {
+        if (this.pending()) return;
+        if (this.retryable()) {
+            this.retryRequested.emit();
+        } else if (this.known()) {
+            this.toggleRequested.emit();
+        }
     }
 }

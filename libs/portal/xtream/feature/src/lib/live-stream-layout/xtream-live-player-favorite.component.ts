@@ -35,6 +35,7 @@ export class XtreamLivePlayerFavoriteComponent {
     private readonly destroyRef = inject(DestroyRef);
 
     private readonly storedFavorite = signal<boolean | null>(null);
+    readonly retryable = signal(false);
     private readonly pendingTarget = signal<XtreamLiveFavoriteTarget | null>(null);
     readonly isFavorite = computed(() => this.storedFavorite() === true);
     readonly known = computed(() => this.storedFavorite() !== null);
@@ -46,6 +47,7 @@ export class XtreamLivePlayerFavoriteComponent {
             let current = true;
             let markSeen = false;
             this.storedFavorite.set(null);
+            this.retryable.set(false);
             const markSubscription = this.marks.changes$.subscribe((change) => {
                 if (
                     !current ||
@@ -55,6 +57,7 @@ export class XtreamLivePlayerFavoriteComponent {
                     return;
                 }
                 markSeen = true;
+                this.retryable.set(false);
                 this.storedFavorite.set(change.isFavorite);
             });
             const initialSubscription = this.favorites
@@ -62,6 +65,7 @@ export class XtreamLivePlayerFavoriteComponent {
                 .subscribe({
                     next: (saved) => {
                         if (current && !markSeen) {
+                            this.retryable.set(false);
                             this.storedFavorite.set(
                                 saved.some(
                                     (row) =>
@@ -74,6 +78,7 @@ export class XtreamLivePlayerFavoriteComponent {
                     error: () => {
                         if (current && !markSeen) {
                             this.storedFavorite.set(null);
+                            this.retryable.set(true);
                         }
                     },
                 });
@@ -105,6 +110,7 @@ export class XtreamLivePlayerFavoriteComponent {
                     row.type === 'live' && row.xtream_id === target.xtreamId
             );
             this.storedFavorite.set(isFavorite);
+            this.retryable.set(false);
             this.marks.notify({
                 playlistId: target.playlistId,
                 key: `live:${target.xtreamId}`,
@@ -114,6 +120,7 @@ export class XtreamLivePlayerFavoriteComponent {
             // A rejected read/write cannot authorize a new favorite state.
             if (!this.destroyRef.destroyed && this.target() === target) {
                 this.storedFavorite.set(null);
+                this.retryable.set(true);
             }
         } finally {
             if (!this.destroyRef.destroyed && this.pendingTarget() === target) {
@@ -121,4 +128,32 @@ export class XtreamLivePlayerFavoriteComponent {
             }
         }
     }
+    /** Retry only reads saved state; it never accidentally toggles a favorite. */
+    async retry(): Promise<void> {
+        const target = this.target();
+        if (this.pending()) return;
+        this.pendingTarget.set(target);
+        this.retryable.set(false);
+        try {
+            const saved = await firstValueFrom(
+                this.favorites.getFavorites(target.playlistId)
+            );
+            if (this.destroyRef.destroyed || this.target() !== target) return;
+            this.storedFavorite.set(
+                saved.some(
+                    (row) =>
+                        row.type === 'live' && row.xtream_id === target.xtreamId
+                )
+            );
+        } catch {
+            if (!this.destroyRef.destroyed && this.target() === target) {
+                this.retryable.set(true);
+            }
+        } finally {
+            if (!this.destroyRef.destroyed && this.pendingTarget() === target) {
+                this.pendingTarget.set(null);
+            }
+        }
+    }
+
 }

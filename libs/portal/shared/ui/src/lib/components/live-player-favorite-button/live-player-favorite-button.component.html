@@ -2,20 +2,22 @@
     mat-icon-button
     type="button"
     [attr.data-test-id]="testId()"
-    [disabled]="!known() || pending()"
+    [disabled]="pending() || (!known() && !retryable())"
     [attr.aria-pressed]="known() ? isFavorite() : null"
     [attr.aria-label]="
-        ((known()
-            ? (isFavorite()
-                ? 'CHANNELS.REMOVE_FAVORITE'
-                : 'CHANNELS.ADD_FAVORITE')
-            : 'CHANNELS.FAVORITES') | translate) +
+        ((retryable()
+            ? 'PLAYBACK_DIAGNOSTICS.ACTION_RETRY'
+            : known()
+              ? (isFavorite()
+                    ? 'CHANNELS.REMOVE_FAVORITE'
+                    : 'CHANNELS.ADD_FAVORITE')
+              : 'CHANNELS.FAVORITES') | translate) +
         ': ' + channelName() +
         (sourceLabel() ? ' · ' + sourceLabel() : '')
     "
-    (click)="toggle()"
+    (click)="activate()"
 >
     <mat-icon aria-hidden="true">{{
-        known() && isFavorite() ? 'star' : 'star_border'
+        retryable() ? 'refresh' : known() && isFavorite() ? 'star' : 'star_border'
     }}</mat-icon>
 </button>

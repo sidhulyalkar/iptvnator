@@ -136,9 +136,18 @@ describe('XtreamLivePlayerFavoriteComponent', () => {
         star().click();
         await fixture.whenStable();
         fixture.detectChanges();
-        expect(star().disabled).toBe(true);
+        expect(star().disabled).toBe(false);
         expect(star().getAttribute('aria-pressed')).toBeNull();
+        expect(star().querySelector('mat-icon')?.textContent).toContain('refresh');
         expect(notified).toEqual([]);
+
+        // Retry is read-only: it cannot flip the stored favorite again.
+        store.toggleFavorite.mockClear();
+        star().click();
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(store.toggleFavorite).not.toHaveBeenCalled();
+        expect(star().getAttribute('aria-pressed')).toBe('false');
         subscription.unsubscribe();
     });
 
