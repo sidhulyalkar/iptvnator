@@ -61,6 +61,15 @@
                         [playbackSessionKey]="playbackSessionKey()"
                     />
                 } @else {
+                    <app-active-recent-favorite-button
+                        [mode]="mode()"
+                        [items]="items()"
+                        [activeItem]="activeItem()"
+                        [hasActiveDetail]="activeDetail() !== null"
+                        [selectionPending]="isSelecting()"
+                        [favoriteUids]="favoriteUids()"
+                        (favoriteToggled)="favoriteToggled.emit($event)"
+                    />
                     <app-web-player-view
                         [playbackSessionKey]="playbackSessionKey()"
                         [streamUrl]="currentStreamUrl()"
