@@ -135,7 +135,9 @@ describe('StalkerLivePlayerFavoriteComponent', () => {
         await fixture.whenStable();
         fixture.detectChanges();
         expect(star().getAttribute('aria-pressed')).toBeNull();
-        expect(star().getAttribute('aria-label')).toContain('Retry');
+        expect(star().querySelector('mat-icon')?.textContent).toContain(
+            'refresh'
+        );
         expect(star().disabled).toBe(false);
         expect(confirmed).toEqual([]);
 
