@@ -108,6 +108,29 @@ describe('StalkerLivePlayerFavoriteComponent', () => {
         expect(confirmed.at(-1)?.isFavorite).toBe(false);
     });
 
+    it('removes the durable stream_id when it differs from the playing channel id', async () => {
+        saved = ['canonical-99'];
+        fixture.componentRef.setInput('target', {
+            ...target,
+            favoriteId: 'canonical-99',
+            item: { ...target.item, stream_id: 'canonical-99' },
+        });
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(star().getAttribute('aria-pressed')).toBe('true');
+
+        star().click();
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(store.removeFromFavorites).toHaveBeenCalledWith(
+            'canonical-99',
+            expect.any(Function),
+            expect.any(Function)
+        );
+        expect(star().getAttribute('aria-pressed')).toBe('false');
+    });
+
     it('blocks duplicate writes and discards late responses for a new channel', async () => {
         let acknowledge!: () => void;
         store.addToFavorites.mockImplementationOnce((_item, done) => {

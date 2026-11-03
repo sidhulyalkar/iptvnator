@@ -433,6 +433,40 @@ describe('StalkerLiveStreamLayoutComponent', () => {
         expect(component.favoriteRevision()).toBe(before + 1);
     });
 
+    it('keeps row marks unchanged until a portal write succeeds', () => {
+        fixture.detectChanges();
+        component.favorites.clear();
+        stalkerStore.addToFavorites.mockClear();
+        stalkerStore.removeFromFavorites.mockClear();
+        const channel = itvChannels()[0];
+
+        component.toggleFavorite(channel);
+        expect(component.favorites.has('10001')).toBe(false);
+        expect(stalkerStore.addToFavorites).toHaveBeenCalledTimes(1);
+        component.toggleFavorite(channel);
+        expect(stalkerStore.addToFavorites).toHaveBeenCalledTimes(1);
+
+        stalkerStore.addToFavorites.mock.calls[0][1]();
+        expect(component.favorites.has('10001')).toBe(true);
+        component.toggleFavorite(channel);
+        expect(component.favorites.has('10001')).toBe(true);
+        stalkerStore.removeFromFavorites.mock.calls[0][1]();
+        expect(component.favorites.has('10001')).toBe(false);
+    });
+
+    it('allows retrying a failed row write without showing a saved star', () => {
+        fixture.detectChanges();
+        component.favorites.clear();
+        stalkerStore.addToFavorites.mockClear();
+
+        component.toggleFavorite(itvChannels()[0]);
+        stalkerStore.addToFavorites.mock.calls[0][2]();
+        expect(component.favorites.has('10001')).toBe(false);
+
+        component.toggleFavorite(itvChannels()[0]);
+        expect(stalkerStore.addToFavorites).toHaveBeenCalledTimes(2);
+    });
+
     it('does not request or render EPG without a portal transport', async () => {
         fixture.destroy();
         // This spec's runtime stub derives every flag from window.electron,
