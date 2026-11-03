@@ -33,6 +33,16 @@ Use it when changing existing views or introducing new list-based UI in the work
    without vertical accent strips or side-border imitations, including in
    EPG rows.
 
+8. Favorites remain one shared collection, not a second player. The workspace
+   rail exposes global favorites; the M3U context rail exposes the existing
+   playlist-scoped favorites route. Cross-source rows display credential-safe
+   playlist provenance beside the channel name. The shared channel row owns
+   the toggle with stable pressed semantics and keeps it reachable in narrow lists.
+
+9. Use selection, typography and restrained theme accents for a futuristic
+   appearance rather than fullscreen chrome, exaggerated glow or perpetual
+   animation. Respect reduced motion and preserve the media-first layout.
+
 ## Angular Material's Role
 
 Decision of 2026-10-12. The repository has no ADR folder; decisions live in
