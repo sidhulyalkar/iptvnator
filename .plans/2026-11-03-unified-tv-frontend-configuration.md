@@ -183,8 +183,13 @@ Progress: the Recently Viewed live player covers the unified collection, and
 Xtream dedicated live playback now has a source-scoped persistence adapter
 using the existing Xtream favorite store and cross-panel relay. The shared
 favorite button is presentation-only; an unavailable persisted-state read
-offers read-only Retry. Dedicated M3U and Stalker live layouts still need
-source-owned adapters and qualification.
+offers read-only Retry. The M3U video player now uses the same playlist-scoped NgRx action and
+favorites URL list as its rail, preserving the existing optimistic write
+semantics. Stalker has a source-owned committed-playback adapter that checks
+persisted favorites on load and after store success callbacks; store failures
+are observable, stale sources cannot update the player, and row marks only
+change after successful portal writes. All are unverified until Nx/E2E runs.
+Radio and external/fullscreen variations still need a separate review.
 
 P1. Unify channel/guide discovery affordances in the current workspace shell
 without creating another route or duplicating query execution.

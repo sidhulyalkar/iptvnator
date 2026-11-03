@@ -409,6 +409,28 @@ describe('StalkerLiveStreamLayoutComponent', () => {
         settingsStore.resolvedEpgViewMode.set('timeline'); // restore for sibling tests
     });
 
+    it('ignores a favorite confirmation belonging to another portal', () => {
+        fixture.detectChanges();
+        component.favorites.clear();
+        const before = component.favoriteRevision();
+
+        component.onPlayerFavoriteConfirmed({
+            playlistId: 'another-source',
+            channelId: '10001',
+            isFavorite: true,
+        });
+        expect(component.favorites.has('10001')).toBe(false);
+        expect(component.favoriteRevision()).toBe(before);
+
+        component.onPlayerFavoriteConfirmed({
+            playlistId: 'playlist-1',
+            channelId: '10001',
+            isFavorite: true,
+        });
+        expect(component.favorites.has('10001')).toBe(true);
+        expect(component.favoriteRevision()).toBe(before + 1);
+    });
+
     it('does not request or render EPG without a portal transport', async () => {
         fixture.destroy();
         // This spec's runtime stub derives every flag from window.electron,
