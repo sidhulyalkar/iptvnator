@@ -1,0 +1,9 @@
+<app-live-player-favorite-button
+    testId="xtream-live-player-favorite"
+    [channelName]="target().channelName"
+    [sourceName]="target().sourceName"
+    [isFavorite]="isFavorite()"
+    [known]="known()"
+    [pending]="pending()"
+    (toggleRequested)="toggle()"
+/>
