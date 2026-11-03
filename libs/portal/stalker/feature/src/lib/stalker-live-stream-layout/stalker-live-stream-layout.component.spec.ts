@@ -450,6 +450,12 @@ describe('StalkerLiveStreamLayoutComponent', () => {
         expect(component.favorites.has('10001')).toBe(true);
         component.toggleFavorite(channel);
         expect(component.favorites.has('10001')).toBe(true);
+        expect(stalkerStore.removeFromFavorites).toHaveBeenCalledWith(
+            '10001',
+            expect.any(Function),
+            expect.any(Function),
+            'itv'
+        );
         stalkerStore.removeFromFavorites.mock.calls[0][1]();
         expect(component.favorites.has('10001')).toBe(false);
     });
