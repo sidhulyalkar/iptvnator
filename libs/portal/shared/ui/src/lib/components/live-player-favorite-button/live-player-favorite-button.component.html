@@ -1,0 +1,21 @@
+<button
+    mat-icon-button
+    type="button"
+    [attr.data-test-id]="testId()"
+    [disabled]="!known() || pending()"
+    [attr.aria-pressed]="known() ? isFavorite() : null"
+    [attr.aria-label]="
+        ((known()
+            ? (isFavorite()
+                ? 'CHANNELS.REMOVE_FAVORITE'
+                : 'CHANNELS.ADD_FAVORITE')
+            : 'CHANNELS.FAVORITES') | translate) +
+        ': ' + channelName() +
+        (sourceLabel() ? ' · ' + sourceLabel() : '')
+    "
+    (click)="toggle()"
+>
+    <mat-icon aria-hidden="true">{{
+        known() && isFavorite() ? 'star' : 'star_border'
+    }}</mat-icon>
+</button>

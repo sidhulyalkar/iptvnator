@@ -5,10 +5,7 @@ import {
     input,
     output,
 } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { TranslatePipe } from '@ngx-translate/core';
-import { playlistDisplayLabel } from '@iptvnator/shared/interfaces';
+import { LivePlayerFavoriteButtonComponent } from '../live-player-favorite-button/live-player-favorite-button.component';
 import type { UnifiedCollectionItem } from '@iptvnator/portal/shared/util';
 import { resolveActiveRecentFavorite } from './active-recent-favorite';
 
@@ -17,7 +14,7 @@ import { resolveActiveRecentFavorite } from './active-recent-favorite';
     templateUrl: './active-recent-favorite-button.component.html',
     styleUrl: './active-recent-favorite-button.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [MatButtonModule, MatIconModule, TranslatePipe],
+    imports: [LivePlayerFavoriteButtonComponent],
 })
 export class ActiveRecentFavoriteButtonComponent {
     readonly mode = input<'favorites' | 'recent'>('recent');
@@ -37,10 +34,6 @@ export class ActiveRecentFavoriteButtonComponent {
             selectionPending: this.selectionPending(),
         })
     );
-    readonly sourceLabel = computed(() =>
-        playlistDisplayLabel(this.actionable()?.playlistName)
-    );
-
     toggle(): void {
         const channel = this.actionable();
         if (channel) this.favoriteToggled.emit(channel);
