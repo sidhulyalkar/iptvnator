@@ -983,7 +983,8 @@ making the prior diagnostic neither retained nor actionable before asynchronous
 header setup completes. A false or rejected **current** Electron request-header
 handoff now produces a sanitized, retryable unknown-playback diagnostic instead
 of a blank player: neither the setup exception nor source URL/credentials are
-retained in that diagnostic. The header bridge itself fails closed rather than
+retained in that diagnostic. The UI uses existing localized stream-loading
+copy, because the failure can precede creation of a browser media engine. The header bridge itself fails closed rather than
 treating IPC rejection as a successful override installation. A stale success,
 false result, or rejection still cannot erase newer owned diagnostics or mutate
 the newer application state.
