@@ -32,6 +32,7 @@ export class StalkerLivePlayerFavoriteComponent {
     readonly favoriteConfirmed = output<{
         playlistId: string;
         channelId: string;
+        favoriteId: string;
         isFavorite: boolean;
     }>();
 
@@ -78,7 +79,7 @@ export class StalkerLivePlayerFavoriteComponent {
             );
             if (this.isCurrent(target, generation)) {
                 this.persisted.set(
-                    hasStalkerLiveFavorite(favorites, target.channelId)
+                    hasStalkerLiveFavorite(favorites, target.favoriteId)
                 );
             }
         } catch {
@@ -105,13 +106,14 @@ export class StalkerLivePlayerFavoriteComponent {
             if (!this.isCurrent(target, generation)) return;
             const isFavorite = hasStalkerLiveFavorite(
                 saved,
-                target.channelId
+                target.favoriteId
             );
             this.persisted.set(isFavorite);
             this.retryable.set(false);
             this.favoriteConfirmed.emit({
                 playlistId: target.playlistId,
                 channelId: target.channelId,
+                favoriteId: target.favoriteId,
                 isFavorite,
             });
         } catch {
@@ -148,7 +150,7 @@ export class StalkerLivePlayerFavoriteComponent {
             try {
                 if (remove) {
                     this.store.removeFromFavorites(
-                        target.channelId,
+                        target.favoriteId,
                         () => settle(true),
                         () => settle(false)
                     );

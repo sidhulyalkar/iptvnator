@@ -9,6 +9,7 @@ import type { StalkerLiveFavoriteTarget } from './stalker-live-favorite-target';
 const target: StalkerLiveFavoriteTarget = {
     playlistId: 'source-1',
     channelId: '42',
+    favoriteId: '42',
     channelName: 'News HD',
     sourceName: 'https://user:secret@portal.example.com/list?password=SECRET',
     item: {
@@ -87,7 +88,12 @@ describe('StalkerLivePlayerFavoriteComponent', () => {
         );
         expect(star().getAttribute('aria-pressed')).toBe('true');
         expect(confirmed).toEqual([
-            { playlistId: 'source-1', channelId: '42', isFavorite: true },
+            {
+                playlistId: 'source-1',
+                channelId: '42',
+                favoriteId: '42',
+                isFavorite: true,
+            },
         ]);
 
         star().click();

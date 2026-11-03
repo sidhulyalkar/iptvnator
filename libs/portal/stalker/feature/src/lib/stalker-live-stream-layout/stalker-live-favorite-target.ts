@@ -4,6 +4,8 @@ import { normalizeStalkerEntityId } from '@iptvnator/portal/stalker/data-access'
 export interface StalkerLiveFavoriteTarget {
     readonly playlistId: string;
     readonly channelId: string;
+    /** Actual persisted portal key; may differ from the selection id. */
+    readonly favoriteId: string;
     readonly channelName: string;
     readonly sourceName: string;
     readonly item: StalkerItvChannel;
@@ -20,6 +22,7 @@ export function createStalkerLiveFavoriteTarget(
     if (!mounted || radioMode || !identity || !item) return null;
     const playlistId = normalizeStalkerEntityId(playlist?._id);
     const channelId = normalizeStalkerEntityId(item.id);
+    const favoriteId = normalizeStalkerEntityId(item.stream_id) || channelId;
     const name = (item.o_name || item.name || '').trim();
     if (
         !playlistId || !channelId || !name ||
@@ -29,6 +32,7 @@ export function createStalkerLiveFavoriteTarget(
     return {
         playlistId,
         channelId,
+        favoriteId,
         channelName: name,
         sourceName: playlist?.title ?? '',
         item,

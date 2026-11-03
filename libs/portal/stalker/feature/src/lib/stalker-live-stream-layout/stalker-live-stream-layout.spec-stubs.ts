@@ -142,6 +142,7 @@ export class StubStalkerLivePlayerFavoriteComponent {
     readonly favoriteConfirmed = output<{
         playlistId: string;
         channelId: string;
+        favoriteId: string;
         isFavorite: boolean;
     }>();
 }

@@ -336,7 +336,10 @@
                         supportsEpgMapping && !isRadioMode()
                     "
                     [isFavorite]="
-                        favorites.get(normalizeStalkerEntityId(item.id)) ??
+                        favorites.get(
+                            normalizeStalkerEntityId(item.stream_id) ||
+                                normalizeStalkerEntityId(item.id)
+                        ) ??
                         false
                     "
                     (clicked)="playChannel(item, undefined, panelSearchTerm)"

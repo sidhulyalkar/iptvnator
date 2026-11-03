@@ -417,6 +417,7 @@ describe('StalkerLiveStreamLayoutComponent', () => {
         component.onPlayerFavoriteConfirmed({
             playlistId: 'another-source',
             channelId: '10001',
+            favoriteId: '10001',
             isFavorite: true,
         });
         expect(component.favorites.has('10001')).toBe(false);
@@ -425,6 +426,7 @@ describe('StalkerLiveStreamLayoutComponent', () => {
         component.onPlayerFavoriteConfirmed({
             playlistId: 'playlist-1',
             channelId: '10001',
+            favoriteId: '10001',
             isFavorite: true,
         });
         expect(component.favorites.has('10001')).toBe(true);

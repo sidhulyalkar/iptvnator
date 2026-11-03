@@ -1153,14 +1153,15 @@ export class StalkerLiveStreamLayoutComponent
     onPlayerFavoriteConfirmed(event: {
         playlistId: string;
         channelId: string;
+        favoriteId: string;
         isFavorite: boolean;
     }): void {
         if (
             normalizeStalkerEntityId(this.stalkerStore.currentPlaylist()?._id) !==
             event.playlistId
         ) return;
-        if (event.isFavorite) this.favorites.set(event.channelId, true);
-        else this.favorites.delete(event.channelId);
+        if (event.isFavorite) this.favorites.set(event.favoriteId, true);
+        else this.favorites.delete(event.favoriteId);
         this.favoriteRevision.update((value) => value + 1);
         this.cdr.markForCheck();
     }
@@ -1170,22 +1171,24 @@ export class StalkerLiveStreamLayoutComponent
             this.stalkerStore.currentPlaylist()?._id
         );
         const channelId = normalizeStalkerEntityId(item.id);
-        const key = `${playlistId}:${channelId}`;
-        if (!playlistId || !channelId || this.pendingFavorites.has(key)) return;
+        const favoriteId = normalizeStalkerEntityId(item.stream_id) || channelId;
+        const key = `${playlistId}:${favoriteId}`;
+        if (!playlistId || !favoriteId || this.pendingFavorites.has(key)) return;
         this.pendingFavorites.add(key);
         const onDone = (isFavorite: boolean) => {
             this.pendingFavorites.delete(key);
             this.onPlayerFavoriteConfirmed({
                 playlistId,
                 channelId,
+                favoriteId,
                 isFavorite,
             });
         };
         const onError = () => this.pendingFavorites.delete(key);
 
-        if (this.favorites.has(channelId)) {
+        if (this.favorites.has(favoriteId)) {
             this.stalkerStore.removeFromFavorites(
-                channelId,
+                favoriteId,
                 () => onDone(false),
                 onError
             );

@@ -24,6 +24,7 @@ describe('Stalker live favorite identity', () => {
         ).toEqual({
             playlistId: 'source-1',
             channelId: '42',
+            favoriteId: '42',
             channelName: 'News HD',
             sourceName: playlist.title,
             item,
@@ -58,6 +59,23 @@ describe('Stalker live favorite identity', () => {
         expect(
             createStalkerLiveFavoriteTarget(null, identity, item, true, false)
         ).toBeNull();
+    });
+
+    it('prefers stream_id for saved favorites but retains playback id', () => {
+        expect(
+            createStalkerLiveFavoriteTarget(
+                playlist,
+                identity,
+                { ...item, stream_id: 'canonical-99' },
+                true,
+                false
+            )
+        ).toEqual(
+            expect.objectContaining({
+                channelId: '42',
+                favoriteId: 'canonical-99',
+            })
+        );
     });
 
     it('matches legacy and new live IDs without treating VOD as live', () => {
