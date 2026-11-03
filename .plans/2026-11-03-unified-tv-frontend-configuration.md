@@ -179,6 +179,12 @@ Never merge loading with success.
 
 P1. Implement active-player favorites only after mapping source IDs through
 the existing shared favorites data access and testing all 3 providers.
+Progress: the Recently Viewed live player covers the unified collection, and
+Xtream dedicated live playback now has a source-scoped persistence adapter
+using the existing Xtream favorite store and cross-panel relay. The shared
+favorite button is presentation-only; an unavailable persisted-state read
+offers read-only Retry. Dedicated M3U and Stalker live layouts still need
+source-owned adapters and qualification.
 
 P1. Unify channel/guide discovery affordances in the current workspace shell
 without creating another route or duplicating query execution.
