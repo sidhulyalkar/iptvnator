@@ -57,8 +57,14 @@ When saved state cannot be read, the icon offers read-only Retry instead of
 silently toggling an unknown favorite. The player favorite is scoped to its
 committed playback identity, not the sidebar highlight.
 
-Dedicated Stalker and M3U live views, and radio controls, remain separate
-follow-ups.
+The dedicated M3U inline video player uses the same shared favorite
+presentation and delegates to the already-established NgRx
+`FavoritesActions.updateFavorites` with playlist-scoped URL selection.
+Unlike Xtream, the legacy M3U action updates UI state synchronously and
+persists through an asynchronous effect. The star mirrors the existing M3U
+rail's local state, not a separate persistence acknowledgement.
+
+Dedicated Stalker live playback and radio controls remain follow-ups.
 
 The staged frontend configuration and experience roadmap is recorded in
 [Unified TV frontend configuration](../../.plans/2026-11-03-unified-tv-frontend-configuration.md).
