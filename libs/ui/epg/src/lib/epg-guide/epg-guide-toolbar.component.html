@@ -123,6 +123,7 @@
             (input)="onFilterInput($event)"
             (keydown.escape)="onFilterEscape($event)"
             [placeholder]="'EPG.GUIDE.FILTER_CHANNELS' | translate"
+            [attr.aria-label]="'EPG.GUIDE.FILTER_CHANNELS' | translate"
             autocomplete="off"
         />
         @if (filter()) {
@@ -148,6 +149,10 @@
                 [value]="searchQuery()"
                 (input)="onSearchInput($event)"
                 (keydown.escape)="onSearchEscape($event)"
+                (keydown.arrowdown)="onSearchArrowDown($event)"
+                [attr.aria-label]="'EPG.GUIDE.SEARCH_PROGRAMMES' | translate"
+                [attr.aria-controls]="searchPanelVisible() ? 'epg-guide-search-results' : null"
+                [attr.aria-expanded]="searchPanelVisible()"
                 [placeholder]="'EPG.GUIDE.SEARCH_PROGRAMMES' | translate"
                 autocomplete="off"
             />

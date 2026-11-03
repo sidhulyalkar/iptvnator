@@ -53,6 +53,8 @@ export class EpgGuideToolbarComponent {
     readonly filter = input('');
     readonly searchEnabled = input(false);
     readonly searchQuery = input('');
+    readonly searchPanelVisible = input(false);
+    readonly searchResultsAvailable = input(false);
     readonly shownCount = input(0);
     readonly totalCount = input(0);
 
@@ -64,6 +66,7 @@ export class EpgGuideToolbarComponent {
     readonly zoomChange = output<number>();
     readonly filterChange = output<string>();
     readonly searchQueryChange = output<string>();
+    readonly searchFirstResult = output<void>();
 
     readonly zoomMin = EPG_GUIDE_ZOOM_MIN;
     readonly zoomMax = EPG_GUIDE_ZOOM_MAX;
@@ -110,6 +113,13 @@ export class EpgGuideToolbarComponent {
         this.onEscape(event, this.filter(), (value) =>
             this.filterChange.emit(value)
         );
+    }
+
+    onSearchArrowDown(event: KeyboardEvent): void {
+        if (!this.searchResultsAvailable()) return;
+        event.preventDefault();
+        event.stopPropagation();
+        this.searchFirstResult.emit();
     }
 
     onSearchEscape(event: Event): void {
