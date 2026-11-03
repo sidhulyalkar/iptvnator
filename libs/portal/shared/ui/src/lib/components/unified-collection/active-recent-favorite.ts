@@ -26,9 +26,12 @@ export function resolveActiveRecentFavorite(
     }
 
     const active = context.activeItem;
+    if (active.contentType !== 'live') return null;
+
     const current = context.items.find(
         (item) =>
             item.uid === active.uid &&
+            item.contentType === 'live' &&
             item.playlistId === active.playlistId &&
             item.sourceType === active.sourceType
     );

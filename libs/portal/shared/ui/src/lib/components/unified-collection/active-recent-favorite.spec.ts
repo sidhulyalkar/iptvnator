@@ -67,5 +67,13 @@ describe('resolveActiveRecentFavorite', () => {
             ...context,
             items: [{ ...active, catalogStatus: 'unknown' }],
         })).toBeNull();
+        expect(resolveActiveRecentFavorite({
+            ...context,
+            activeItem: { ...active, contentType: 'movie' },
+        })).toBeNull();
+        expect(resolveActiveRecentFavorite({
+            ...context,
+            items: [{ ...active, contentType: 'movie' }],
+        })).toBeNull();
     });
 });

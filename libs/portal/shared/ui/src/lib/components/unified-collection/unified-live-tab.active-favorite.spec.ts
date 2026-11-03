@@ -106,48 +106,52 @@ describe('UnifiedLiveTab active-player favorite action', () => {
     it.each(['m3u', 'xtream', 'stalker'] as const)(
         'emits the committed %s channel and follows saved favorite state',
         (sourceType) => {
-        const item = {
-            ...buildLiveItem(sourceType),
-            playlistName: 'https://user:secret@panel.example.com/list?key=SECRET',
-        };
-        const emitted: UnifiedCollectionItem[] = [];
-        component.favoriteToggled.subscribe((value) => emitted.push(value));
-        fixture.componentRef.setInput('items', [item]);
-        fixture.componentRef.setInput('mode', 'recent');
-        component.activeItem.set(item);
-        component.activeDetail.set({
-            playback: { streamUrl: 'https://example.test/live.ts', title: item.name },
-            epgMode: sourceType === 'm3u' ? 'm3u' : 'portal',
-        });
-        fixture.detectChanges();
+            const item = {
+                ...buildLiveItem(sourceType),
+                playlistName:
+                    'https://user:secret@panel.example.com/list?key=SECRET',
+            };
+            const emitted: UnifiedCollectionItem[] = [];
+            component.favoriteToggled.subscribe((value) => emitted.push(value));
+            fixture.componentRef.setInput('items', [item]);
+            fixture.componentRef.setInput('mode', 'recent');
+            component.activeItem.set(item);
+            component.activeDetail.set({
+                playback: {
+                streamUrl: 'https://example.test/live.ts',
+                title: item.name,
+            },
+                epgMode: sourceType === 'm3u' ? 'm3u' : 'portal',
+            });
+            fixture.detectChanges();
 
-        const button = fixture.nativeElement.querySelector(
-            '[data-test-id="active-recent-favorite"]'
-        ) as HTMLButtonElement;
-        expect(button).not.toBeNull();
-        expect(button.getAttribute('aria-pressed')).toBe('false');
-        expect(button.getAttribute('aria-label')).toContain(item.name);
-        expect(button.getAttribute('aria-label')).toContain('panel.example.com');
-        expect(button.getAttribute('aria-label')).not.toContain('secret');
-        expect(button.getAttribute('aria-label')).not.toContain('SECRET');
-        button.click();
-        expect(emitted).toEqual([item]);
-        // A click alone does not claim persistence succeeded.
-        expect(button.getAttribute('aria-pressed')).toBe('false');
-
-        fixture.componentRef.setInput('favoriteUids', new Set([item.uid]));
-        fixture.detectChanges();
-        expect(button.getAttribute('aria-pressed')).toBe('true');
-        button.click();
-        expect(emitted).toEqual([item, item]);
-
-        component.isSelecting.set(true);
-        fixture.detectChanges();
-        expect(
-            fixture.nativeElement.querySelector(
+            const button = fixture.nativeElement.querySelector(
                 '[data-test-id="active-recent-favorite"]'
-            )
-        ).toBeNull();
+            ) as HTMLButtonElement;
+            expect(button).not.toBeNull();
+            expect(button.getAttribute('aria-pressed')).toBe('false');
+            expect(button.getAttribute('aria-label')).toContain(item.name);
+            expect(button.getAttribute('aria-label')).toContain('panel.example.com');
+            expect(button.getAttribute('aria-label')).not.toContain('secret');
+            expect(button.getAttribute('aria-label')).not.toContain('SECRET');
+            button.click();
+            expect(emitted).toEqual([item]);
+            // A click alone does not claim persistence succeeded.
+            expect(button.getAttribute('aria-pressed')).toBe('false');
+
+            fixture.componentRef.setInput('favoriteUids', new Set([item.uid]));
+            fixture.detectChanges();
+            expect(button.getAttribute('aria-pressed')).toBe('true');
+            button.click();
+            expect(emitted).toEqual([item, item]);
+
+            component.isSelecting.set(true);
+            fixture.detectChanges();
+            expect(
+                fixture.nativeElement.querySelector(
+                    '[data-test-id="active-recent-favorite"]'
+                )
+            ).toBeNull();
         }
     );
 
@@ -157,7 +161,10 @@ describe('UnifiedLiveTab active-player favorite action', () => {
         fixture.componentRef.setInput('mode', 'favorites');
         component.activeItem.set(item);
         component.activeDetail.set({
-            playback: { streamUrl: 'https://example.test/live.ts', title: item.name },
+            playback: {
+                streamUrl: 'https://example.test/live.ts',
+                title: item.name,
+            },
             epgMode: 'portal',
         });
         fixture.detectChanges();
