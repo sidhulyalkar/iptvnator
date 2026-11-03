@@ -980,9 +980,13 @@ tracking that intent, so clearing a temporary player override is incorporated
 into one application instead of scheduling a duplicate Electron header handoff.
 Each application start clears both the diagnostic owner and backing signal,
 making the prior diagnostic neither retained nor actionable before asynchronous
-header setup completes. False or rejected current handoffs leave it clear, and
-a stale success, false result, or rejection cannot erase a newer owned
-diagnostic or mutate the newer application state.
+header setup completes. A false or rejected **current** Electron request-header
+handoff now produces a sanitized, retryable unknown-playback diagnostic instead
+of a blank player: neither the setup exception nor source URL/credentials are
+retained in that diagnostic. The header bridge itself fails closed rather than
+treating IPC rejection as a successful override installation. A stale success,
+false result, or rejection still cannot erase newer owned diagnostics or mutate
+the newer application state.
 
 Selecting a built-in recommendation records the target, immediately detaches
 the diagnostic, and installs a temporary local override ahead of the host

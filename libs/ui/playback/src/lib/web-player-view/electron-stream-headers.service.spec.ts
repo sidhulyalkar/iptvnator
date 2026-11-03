@@ -134,8 +134,22 @@ describe('ElectronStreamHeadersService', () => {
         });
         setUserAgent.mockRejectedValue(new Error('ipc down'));
 
-        await expect(service.apply(GATED_PLAYBACK)).resolves.toBe(true);
-        expect(warn).toHaveBeenCalled();
+        await expect(service.apply(GATED_PLAYBACK)).resolves.toBe(false);
+        expect(warn).toHaveBeenCalledWith(
+            '[ElectronStreamHeaders] Request-header setup failed'
+        );
         warn.mockRestore();
     });
+    it('does not expose a synchronous IPC exception or treat it as success', async () => {
+        const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+        setUserAgent.mockImplementation(() => {
+            throw new Error('private cookie=should-not-be-logged');
+        });
+        await expect(service.apply(GATED_PLAYBACK)).resolves.toBe(false);
+        expect(warn).toHaveBeenCalledWith(
+            '[ElectronStreamHeaders] Request-header setup failed'
+        );
+        warn.mockRestore();
+    });
+
 });
