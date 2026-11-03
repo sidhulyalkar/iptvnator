@@ -1,6 +1,7 @@
 import {
     type PlaybackDiagnostic,
     PlaybackDiagnosticCode,
+    PlaybackDiagnosticSource,
     getLikelyBrowserUnsupportedCodecLabels,
 } from '@iptvnator/playback/util';
 import { getDiagnosticSummaryKey } from './playback-diagnostic-summary.util';
@@ -22,6 +23,11 @@ export type PlaybackDiagnosticDetail = {
 };
 
 export function getDiagnosticTitleKey(issue: PlaybackDiagnostic): string {
+    // Stream-header IPC can fail before any browser player starts. Reuse the
+    // localized stream-loading copy rather than claiming the engine failed.
+    if (isHeaderSetupFailure(issue)) {
+        return 'PLAYBACK_DIAGNOSTICS.NETWORK_ERROR.TITLE';
+    }
     return `${getDiagnosticTranslationBase(issue)}.TITLE`;
 }
 
@@ -30,6 +36,9 @@ export function getDiagnosticDescriptionKey(
     supportsManagedExternalPlayers: boolean,
     playbackExternallyTransferable: boolean
 ): string {
+    if (isHeaderSetupFailure(issue)) {
+        return 'PLAYBACK_DIAGNOSTICS.NETWORK_ERROR.DESCRIPTION';
+    }
     const summary = getDiagnosticSummaryKey(issue);
     if (summary) return summary;
     if (
@@ -185,6 +194,13 @@ function formatDiagnosticErrorDetails(issue: PlaybackDiagnostic): string {
     ]
         .filter((value) => value.trim().length > 0)
         .join(' · ');
+}
+
+function isHeaderSetupFailure(issue: PlaybackDiagnostic): boolean {
+    return (
+        issue.source === PlaybackDiagnosticSource.Source &&
+        issue.details === 'request-header-setup-failed'
+    );
 }
 
 function getDiagnosticTranslationBase(issue: PlaybackDiagnostic): string {

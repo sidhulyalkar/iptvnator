@@ -65,21 +65,35 @@ export class ElectronStreamHeadersService {
         const authorization = getHeaderValue(playback.headers, 'Authorization');
 
         this.currentScopeUrl = playback.streamUrl;
-        return window.electron
-            .setUserAgent(
-                userAgent,
-                referer,
-                playback.streamUrl,
-                cookie || authorization ? { authorization, cookie } : undefined
-            )
-            .catch((error: unknown) => {
-                console.warn(
-                    '[ElectronStreamHeaders] Failed to configure request headers:',
-                    error
+        // An IPC failure is not evidence that credential-bearing request
+        // overrides were installed. Never mount the engine on that assumption.
+        // Do not log the caught exception: some bridge errors contain URLs or
+        // request values that must not reach the console.
+        try {
+            return window.electron
+                .setUserAgent(
+                    userAgent,
+                    referer,
+                    playback.streamUrl,
+                    cookie || authorization
+                        ? { authorization, cookie }
+                        : undefined
+                )
+                .then(
+                    () => sequence === this.syncSequence,
+                    () => {
+                        console.warn(
+                            '[ElectronStreamHeaders] Request-header setup failed'
+                        );
+                        return false;
+                    }
                 );
-                return true;
-            })
-            .then(() => sequence === this.syncSequence);
+        } catch {
+            console.warn(
+                '[ElectronStreamHeaders] Request-header setup failed'
+            );
+            return Promise.resolve(false);
+        }
     }
 
     /**

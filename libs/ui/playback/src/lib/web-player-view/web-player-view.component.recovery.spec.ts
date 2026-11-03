@@ -862,7 +862,7 @@ describe('WebPlayerViewComponent recovery integration', () => {
         ['reload', 'false'],
         ['reload', 'rejection'],
     ] as const)(
-        'clears the backing diagnostic for a $intent intent whose handoff ends in $outcome',
+        'replaces old evidence with a retryable header failure for a current $intent $outcome',
         async (intent, outcome) => {
             await render();
             const oldIssue = mediaIssue('videojs');
@@ -896,9 +896,19 @@ describe('WebPlayerViewComponent recovery integration', () => {
             fixture.detectChanges();
 
             expect(component.recoveryPending()).toBe(false);
-            expect(component.playbackDiagnostic()).toBeNull();
-            expect(component.visiblePlaybackDiagnostic()).toBeNull();
-            expect(query('playback-diagnostic-banner')).toBeNull();
+            expect(component.playbackDiagnostic()).toEqual(
+                expect.objectContaining({
+                    code: PlaybackDiagnosticCode.UnknownPlaybackError,
+                    source: PlaybackDiagnosticSource.Source,
+                    sourceUrl: '',
+                    details: 'request-header-setup-failed',
+                })
+            );
+            expect(component.visiblePlaybackDiagnostic()).toBe(
+                component.playbackDiagnostic()
+            );
+            expect(query('playback-diagnostic-banner')).not.toBeNull();
+            expect(component.recommendations()[0]?.action).toBe('retry');
             expect(component.channel()).toBeUndefined();
         }
     );
@@ -1162,9 +1172,13 @@ describe('WebPlayerViewComponent recovery integration', () => {
         headerResolvers[1](false);
         await fixture.whenStable();
         fixture.detectChanges();
-        expect(query('playback-diagnostic-banner')).toBeNull();
+        expect(component.visiblePlaybackDiagnostic()?.details).toBe(
+            'request-header-setup-failed'
+        );
 
         setPlayback({ streamUrl: 'https://example.com/final.m3u8' });
+        fixture.detectChanges();
+        expect(query('playback-diagnostic-banner')).toBeNull();
         fixture.detectChanges();
         headerResolvers[2](true);
         await fixture.whenStable();
@@ -1280,6 +1294,62 @@ describe('WebPlayerViewComponent recovery integration', () => {
         ) => void;
         handler.call(component, event, ownership);
     }
+    it('retries a failed current stream-header handoff without changing the selected channel', async () => {
+        await render();
+        holdHeaderHandoff = true;
+        setPlayback({ streamUrl: 'https://example.com/header-fail.m3u8' });
+        fixture.detectChanges();
+        expect(headerRejectors).toHaveLength(1);
+
+        headerRejectors[0](new Error('private auth detail'));
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        expect(component.channel()).toBeUndefined();
+        expect(component.visiblePlaybackDiagnostic()?.code).toBe(
+            PlaybackDiagnosticCode.UnknownPlaybackError
+        );
+        expect(component.recommendations()[0]?.action).toBe('retry');
+        const failedBinding = component.activeBinding();
+
+        click('playback-retry');
+        fixture.detectChanges();
+        expect(component.activeBinding()).not.toBe(failedBinding);
+        expect(headerResolvers).toHaveLength(2);
+        expect(component.visiblePlaybackDiagnostic()).toBeNull();
+
+        headerResolvers[1](true);
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(component.channel()?.url).toBe(
+            'https://example.com/header-fail.m3u8'
+        );
+        expect(component.visiblePlaybackDiagnostic()).toBeNull();
+    });
+
+    it('does not revive a rejected handoff after a newer source mounts', async () => {
+        await render();
+        holdHeaderHandoff = true;
+        setPlayback({ streamUrl: 'https://example.com/old.m3u8' });
+        fixture.detectChanges();
+        expect(headerRejectors).toHaveLength(1);
+
+        holdHeaderHandoff = false;
+        setPlayback({ streamUrl: 'https://example.com/new.m3u8' });
+        fixture.detectChanges();
+        expect(component.channel()?.url).toBe(
+            'https://example.com/new.m3u8'
+        );
+
+        headerRejectors[0](new Error('private stale detail'));
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(component.visiblePlaybackDiagnostic()).toBeNull();
+        expect(component.channel()?.url).toBe(
+            'https://example.com/new.m3u8'
+        );
+    });
+
 });
 
 function externalSession(

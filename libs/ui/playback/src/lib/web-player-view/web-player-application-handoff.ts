@@ -1,4 +1,11 @@
 import type { ResolvedPortalPlayback } from '@iptvnator/shared/interfaces';
+import {
+    getPlaybackMediaExtensionFromUrl,
+    PlaybackDiagnosticCode,
+    PlaybackDiagnosticSource,
+    type PlaybackDiagnostic,
+    type InlinePlaybackPlayer,
+} from '@iptvnator/playback/util';
 import type { VideoPlayerOptions } from '../vjs-player/vjs-player.types';
 import { ElectronStreamHeadersService } from './electron-stream-headers.service';
 import {
@@ -14,6 +21,23 @@ import {
 export interface WebPlayerApplicationHandoff {
     readonly channel: ReturnType<typeof createWebPlayerChannel>;
     readonly vjsOptions: VideoPlayerOptions;
+}
+
+/** No provider payloads or exception text are retained in the error evidence. */
+export function createWebPlayerHeaderHandoffDiagnostic(
+    target: InlinePlaybackPlayer,
+    streamUrl: string
+): PlaybackDiagnostic {
+    return {
+        code: PlaybackDiagnosticCode.UnknownPlaybackError,
+        source: PlaybackDiagnosticSource.Source,
+        sourceUrl: '',
+        container: getPlaybackMediaExtensionFromUrl(streamUrl) || 'unknown',
+        player: target,
+        audioCodecs: [],
+        videoCodecs: [],
+        details: 'request-header-setup-failed',
+    };
 }
 
 interface WebPlayerApplicationOwnership {
@@ -37,7 +61,8 @@ export class WebPlayerApplicationHandoffCoordinator {
         binding: PlaybackBinding,
         token: WebPlayerApplicationToken,
         currentToken: () => WebPlayerApplicationToken,
-        accept: (handoff: WebPlayerApplicationHandoff) => void
+        accept: (handoff: WebPlayerApplicationHandoff) => void,
+        fail: () => void
     ): void {
         this.activeOwnership = Object.freeze({ binding, token });
         const headerSync = this.streamHeaders.apply(playback);
@@ -72,12 +97,12 @@ export class WebPlayerApplicationHandoffCoordinator {
                 } else if (
                     this.ownsCurrentApplication(binding, token, currentToken)
                 ) {
-                    this.recoverySession.settle(binding);
+                    fail();
                 }
             },
             () => {
                 if (this.ownsCurrentApplication(binding, token, currentToken)) {
-                    this.recoverySession.settle(binding);
+                    fail();
                 }
             }
         );
