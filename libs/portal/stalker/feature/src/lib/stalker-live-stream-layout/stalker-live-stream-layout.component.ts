@@ -1194,7 +1194,8 @@ export class StalkerLiveStreamLayoutComponent
             this.stalkerStore.removeFromFavorites(
                 favoriteId,
                 () => onDone(false),
-                onError
+                onError,
+                radioMode ? 'radio' : 'itv'
             );
         } else {
             const playableItem = this.toPlayableChannel(item);

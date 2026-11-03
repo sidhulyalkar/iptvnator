@@ -152,7 +152,8 @@ export class StalkerLivePlayerFavoriteComponent {
                     this.store.removeFromFavorites(
                         target.favoriteId,
                         () => settle(true),
-                        () => settle(false)
+                        () => settle(false),
+                        'itv'
                     );
                 } else {
                     this.store.addToFavorites(

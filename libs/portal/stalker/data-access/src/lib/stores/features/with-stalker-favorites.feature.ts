@@ -108,7 +108,8 @@ export function withStalkerFavorites() {
                     removeFromFavorites(
                         favoriteId: string,
                         onDone?: () => void,
-                        onError?: () => void
+                        onError?: () => void,
+                        contentType?: 'itv' | 'radio'
                     ) {
                         const portalId = storeContext.currentPlaylist()?._id;
                         if (!portalId) {
@@ -117,9 +118,17 @@ export function withStalkerFavorites() {
                         }
 
                         let acknowledged = false;
-                        playlistService
-                            .removeFromPortalFavorites(portalId, favoriteId)
-                            .subscribe({
+                        const removal = contentType
+                            ? playlistService.removeFromPortalFavorites(
+                                  portalId,
+                                  favoriteId,
+                                  contentType
+                              )
+                            : playlistService.removeFromPortalFavorites(
+                                  portalId,
+                                  favoriteId
+                              );
+                        removal.subscribe({
                                 next: (updatedPlaylist) => {
                                     acknowledged = true;
                                     dispatchStalkerPlaylistMetaUpdate(

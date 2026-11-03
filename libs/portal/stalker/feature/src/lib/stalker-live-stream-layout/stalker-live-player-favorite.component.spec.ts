@@ -102,7 +102,8 @@ describe('StalkerLivePlayerFavoriteComponent', () => {
         expect(store.removeFromFavorites).toHaveBeenCalledWith(
             '42',
             expect.any(Function),
-            expect.any(Function)
+            expect.any(Function),
+            'itv'
         );
         expect(star().getAttribute('aria-pressed')).toBe('false');
         expect(confirmed.at(-1)?.isFavorite).toBe(false);
@@ -126,7 +127,8 @@ describe('StalkerLivePlayerFavoriteComponent', () => {
         expect(store.removeFromFavorites).toHaveBeenCalledWith(
             'canonical-99',
             expect.any(Function),
-            expect.any(Function)
+            expect.any(Function),
+            'itv'
         );
         expect(star().getAttribute('aria-pressed')).toBe('false');
     });

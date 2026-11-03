@@ -213,6 +213,13 @@ describe('withStalkerFavorites', () => {
             expect(failed).toHaveBeenCalledTimes(1);
         });
 
+        it('passes a live-only scope to prevent cross-type deletion', () => {
+            store.removeFromFavorites('42', undefined, undefined, 'itv');
+            expect(
+                playlistService.removeFromPortalFavorites
+            ).toHaveBeenCalledWith('portal-1', '42', 'itv');
+        });
+
         it('removes the favorite and syncs the emptied playlist meta', () => {
             const onDone = jest.fn();
 
