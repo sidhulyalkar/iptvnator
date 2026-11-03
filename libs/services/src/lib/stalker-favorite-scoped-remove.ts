@@ -11,7 +11,8 @@ export function filterPortalFavoritesForRemoval<T>(
 
     let removed = false;
     const retained = favorites.filter((entry) => {
-        const favorite = entry as StalkerPortalItem;
+        if (!entry || typeof entry !== 'object') return true;
+        const favorite = entry as unknown as StalkerPortalItem;
         const matches = [
             favorite.stream_id,
             favorite.series_id,

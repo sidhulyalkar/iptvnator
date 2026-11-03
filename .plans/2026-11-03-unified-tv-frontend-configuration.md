@@ -232,3 +232,5 @@ Measure on reproducible M3U, Xtream, Stalker fixtures:
 Capture baselines first. Do not publish speed, quality, or competitor advantage
 claims from aspirational targets. Any performance change follows the existing
 journey ratchet and feature-switch policies.
+
+Safety qualification: Stalker video and radio removals pass a concrete content-type scope through the store into the serialized playlist mutation. A matching ID with an unverified type is retained and the caller receives failure feedback, preserving unrelated VOD favorites. Existing unscoped callers remain compatible, but their wider legacy removal contract should be reviewed separately.
