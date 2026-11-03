@@ -50,6 +50,7 @@ import {
     PlaylistStorageBackend,
     PlaylistWriteConflict,
 } from './playlist-storage-backend';
+import { filterPortalFavoritesForRemoval } from './stalker-favorite-scoped-remove';
 
 const SQLITE_PLAYLIST_MIGRATION_FLAG = 'm3u-playlists-indexeddb-to-sqlite-v1';
 const STALKER_PLAYLIST_METADATA_MIGRATION_FLAG =
@@ -1163,30 +1164,32 @@ export class PlaylistsService {
         });
     }
 
-    removeFromPortalFavorites(portalId: string, favoriteId: number | string) {
+    removeFromPortalFavorites(
+        portalId: string,
+        favoriteId: number | string,
+        contentType?: 'itv' | 'radio'
+    ) {
         if (!portalId) {
             throw new Error('Portal ID is required');
         }
         return this.serializePlaylistWrite(portalId, async () => {
             const portal = await firstValueFrom(this.getPlaylistById(portalId));
+            const result = portal.favorites
+                ? filterPortalFavoritesForRemoval(
+                      portal.favorites,
+                      favoriteId,
+                      contentType
+                  )
+                : null;
 
+            // An untyped or legacy ambiguous record cannot authorize
+            // deletion of another kind of favorite with the same numeric ID.
+            if (contentType && !result?.removed) {
+                throw new Error('STALKER_FAVORITE_SCOPE_UNVERIFIED');
+            }
             return this.persistPlaylistMutation({
                 ...portal,
-                favorites: portal.favorites?.filter((i) => {
-                    const expectedId = String(favoriteId);
-                    const favorite = i as PortalFavoriteItem;
-                    const streamId = String(favorite.stream_id ?? '');
-                    const seriesId = String(favorite.series_id ?? '');
-                    const movieId = String(favorite.movie_id ?? '');
-                    const itemId = String(favorite.id ?? '');
-
-                    return (
-                        streamId !== expectedId &&
-                        seriesId !== expectedId &&
-                        movieId !== expectedId &&
-                        itemId !== expectedId
-                    );
-                }),
+                favorites: result?.retained,
             });
         });
     }
