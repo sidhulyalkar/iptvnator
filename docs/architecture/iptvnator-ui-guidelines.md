@@ -64,7 +64,21 @@ Unlike Xtream, the legacy M3U action updates UI state synchronously and
 persists through an asynchronous effect. The star mirrors the existing M3U
 rail's local state, not a separate persistence acknowledgement.
 
-Dedicated Stalker live playback and radio controls remain follow-ups.
+The dedicated Stalker inline video player also uses the same shared favorite
+button and snapshots its channel from the committed playback identity, never
+from a row selected during a pending stream resolution. Its adapter reads back
+the portal's saved favorites after the existing store completion callback.
+Stalker store methods now surface failure callbacks; an unavailable result
+becomes read-only Retry. Stalker ITV and radio removals use typed,
+source-scoped storage filtering: a live channel cannot remove VOD or radio
+favorites sharing a numeric ID. Untyped legacy records are preserved rather
+than deleted without evidence of ownership. The existing channel list's local
+marks now flip only
+after the portal save acknowledges success, and source switches clear the old
+playlist's marks.
+
+Radio and the legacy/external-player/fullscreen ownership differences remain
+follow-ups.
 
 The staged frontend configuration and experience roadmap is recorded in
 [Unified TV frontend configuration](../../.plans/2026-11-03-unified-tv-frontend-configuration.md).

@@ -155,6 +155,13 @@
                         "
                     />
                 } @else {
+                    @if (activeFavoriteTarget(); as favoriteTarget) {
+                        <app-stalker-live-player-favorite
+                            [target]="favoriteTarget"
+                            [revision]="favoriteRevision()"
+                            (favoriteConfirmed)="onPlayerFavoriteConfirmed($event)"
+                        />
+                    }
                     <app-web-player-view
                         [playbackSessionKey]="playbackSessionKey()"
                         [streamUrl]="streamUrl()"
@@ -329,7 +336,10 @@
                         supportsEpgMapping && !isRadioMode()
                     "
                     [isFavorite]="
-                        favorites.get(normalizeStalkerEntityId(item.id)) ??
+                        favorites.get(
+                            normalizeStalkerEntityId(item.stream_id) ||
+                                normalizeStalkerEntityId(item.id)
+                        ) ??
                         false
                     "
                     (clicked)="playChannel(item, undefined, panelSearchTerm)"

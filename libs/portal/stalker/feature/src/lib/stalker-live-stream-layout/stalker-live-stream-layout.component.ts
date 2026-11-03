@@ -24,7 +24,6 @@ import {
     viewChildren,
 } from '@angular/core';
 import { Router } from '@angular/router';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -98,7 +97,6 @@ import {
 } from '@iptvnator/portal/shared/ui';
 import {
     ACTIVE_EPG_FALLBACK_SIZE,
-    StalkerFavoriteItem,
     StalkerItvChannel,
     StalkerStore,
     normalizeStalkerEntityId,
@@ -116,6 +114,11 @@ import {
     mergeEpgProgramLists,
 } from './stalker-live-epg-preview';
 import { createPlaybackSessionKey } from '@iptvnator/playback/util';
+import {
+    createStalkerLiveFavoriteTarget,
+    type StalkerLiveFavoriteTarget,
+} from './stalker-live-favorite-target';
+import { StalkerLivePlayerFavoriteComponent } from './stalker-live-player-favorite.component';
 
 type StalkerPlayableChannel = StalkerPortalItem & {
     cmd?: string;
@@ -172,6 +175,7 @@ import { StalkerWorkspaceRouteSession } from '../stalker-workspace-route-session
         PortalEmptyStateComponent,
         ResizableDirective,
         StalkerItvAllItemsComponent,
+        StalkerLivePlayerFavoriteComponent,
         TranslatePipe,
         WebPlayerViewComponent,
     ],
@@ -384,6 +388,17 @@ export class StalkerLiveStreamLayoutComponent
     readonly activePlayback = signal<ResolvedPortalPlayback | null>(null);
     private readonly activePlaybackIdentity =
         signal<StalkerActiveLivePlaybackIdentity | null>(null);
+    /** Snapshot the channel committed with the mounted player. */
+    private readonly activeFavoriteItem = signal<StalkerItvChannel | null>(null);
+    readonly activeFavoriteTarget = computed(() =>
+        createStalkerLiveFavoriteTarget(
+            this.stalkerStore.currentPlaylist(),
+            this.activePlaybackIdentity(),
+            this.activeFavoriteItem(),
+            this.activePlayback() !== null,
+            this.isRadioMode()
+        )
+    );
     readonly playbackSessionKey = computed(() => {
         const identity = this.activePlaybackIdentity();
         return identity
@@ -601,6 +616,8 @@ export class StalkerLiveStreamLayoutComponent
 
     /** Favorites */
     readonly favorites = new Map<string | number, boolean>();
+    readonly favoriteRevision = signal(0);
+    private readonly pendingFavorites = new Set<string>();
 
     /**
      * Scroll. The channel list template is stamped twice — in the sidebar and
@@ -679,25 +696,42 @@ export class StalkerLiveStreamLayoutComponent
             });
         });
 
-        // Load favorites for current playlist
-        const playlistId = this.stalkerStore.currentPlaylist()?._id;
-        if (playlistId) {
-            this.playlistService
+        // Refresh the row marks when a source changes, never retain
+        // favorites belonging to a previously selected portal.
+        effect((onCleanup) => {
+            const playlistId = this.stalkerStore.currentPlaylist()?._id;
+            const radioMode = this.isRadioMode();
+            this.favorites.clear();
+            this.favoriteRevision.update((value) => value + 1);
+            this.cdr.markForCheck();
+            if (!playlistId) return;
+            const subscription = this.playlistService
                 .getPortalFavorites(playlistId)
-                .pipe(takeUntilDestroyed())
-                .subscribe((favs) => {
-                    favs.forEach((fav: StalkerFavoriteItem) => {
-                        if (fav.id !== undefined) {
-                            this.favorites.set(
-                                normalizeStalkerEntityId(fav.id),
-                                true
-                            );
+                .subscribe({
+                    next: (favorites) => {
+                        if (this.stalkerStore.currentPlaylist()?._id !== playlistId)
+                            return;
+                        this.favorites.clear();
+                        for (const favorite of favorites) {
+                            const type = String(favorite.category_id ?? '')
+                                .trim()
+                                .toLowerCase();
+                            const wrongType = radioMode
+                                ? ['vod', 'series', 'itv'].includes(type)
+                                : ['vod', 'series', 'radio'].includes(type);
+                            if (wrongType) continue;
+                            const id =
+                                normalizeStalkerEntityId(favorite.stream_id) ||
+                                normalizeStalkerEntityId(favorite.id);
+                            if (id) this.favorites.set(id, true);
                         }
-                    });
-                    // OnPush: the Map changed outside any template event.
-                    this.cdr.markForCheck();
+                        this.favoriteRevision.update((value) => value + 1);
+                        this.cdr.markForCheck();
+                    },
+                    error: () => this.cdr.markForCheck(),
                 });
-        }
+            onCleanup(() => subscription.unsubscribe());
+        });
 
         // Start the full ITV channel list load as soon as the Live TV section
         // is entered (not on the first category click), so the all-channels
@@ -1024,10 +1058,11 @@ export class StalkerLiveStreamLayoutComponent
 
             if (this.usesEmbeddedPlayer()) {
                 if (!sourceId || !channelId) return;
-                this.setActivePlayback(playback, {
-                    sourceId,
-                    contentId: channelId,
-                });
+                this.setActivePlayback(
+                    playback,
+                    { sourceId, contentId: channelId },
+                    item
+                );
             } else if (startPlayback) {
                 void this.portalPlayer.openResolvedPlayback(playback, true);
             }
@@ -1102,32 +1137,79 @@ export class StalkerLiveStreamLayoutComponent
 
     private setActivePlayback(
         playback: ResolvedPortalPlayback,
-        identity: StalkerActiveLivePlaybackIdentity | null
+        identity: StalkerActiveLivePlaybackIdentity | null,
+        item: StalkerItvChannel | null = null
     ): void {
         this.activePlaybackIdentity.set(identity);
+        this.activeFavoriteItem.set(identity ? item : null);
         this.activePlayback.set(playback);
     }
 
     private clearActivePlayback(): void {
         this.activePlaybackIdentity.set(null);
+        this.activeFavoriteItem.set(null);
         this.activePlayback.set(null);
     }
 
-    toggleFavorite(item: StalkerItvChannel) {
-        const itemId = normalizeStalkerEntityId(item.id);
-        if (this.favorites.has(itemId)) {
-            this.stalkerStore.removeFromFavorites(itemId);
-            this.favorites.delete(itemId);
+    /** Only confirmed portal saves may flip the sidebar's favorite mark. */
+    onPlayerFavoriteConfirmed(event: {
+        playlistId: string;
+        channelId: string;
+        favoriteId: string;
+        isFavorite: boolean;
+    }): void {
+        if (
+            normalizeStalkerEntityId(this.stalkerStore.currentPlaylist()?._id) !==
+            event.playlistId
+        ) return;
+        if (event.isFavorite) this.favorites.set(event.favoriteId, true);
+        else this.favorites.delete(event.favoriteId);
+        this.favoriteRevision.update((value) => value + 1);
+        this.cdr.markForCheck();
+    }
+
+    toggleFavorite(item: StalkerItvChannel): void {
+        const playlistId = normalizeStalkerEntityId(
+            this.stalkerStore.currentPlaylist()?._id
+        );
+        const channelId = normalizeStalkerEntityId(item.id);
+        const favoriteId = normalizeStalkerEntityId(item.stream_id) || channelId;
+        const radioMode = this.isRadioMode();
+        const key = `${playlistId}:${radioMode}:${favoriteId}`;
+        if (!playlistId || !favoriteId || this.pendingFavorites.has(key)) return;
+        this.pendingFavorites.add(key);
+        const onDone = (isFavorite: boolean) => {
+            this.pendingFavorites.delete(key);
+            if (this.isRadioMode() !== radioMode) return;
+            this.onPlayerFavoriteConfirmed({
+                playlistId,
+                channelId,
+                favoriteId,
+                isFavorite,
+            });
+        };
+        const onError = () => this.pendingFavorites.delete(key);
+
+        if (this.favorites.has(favoriteId)) {
+            this.stalkerStore.removeFromFavorites(
+                favoriteId,
+                () => onDone(false),
+                onError,
+                radioMode ? 'radio' : 'itv'
+            );
         } else {
             const playableItem = this.toPlayableChannel(item);
-            this.stalkerStore.addToFavorites({
-                ...playableItem,
-                category_id: this.isRadioMode() ? 'radio' : 'itv',
-                title: item.o_name || item.name,
-                cover: item.logo,
-                added_at: new Date().toISOString(),
-            });
-            this.favorites.set(itemId, true);
+            this.stalkerStore.addToFavorites(
+                {
+                    ...playableItem,
+                    category_id: this.isRadioMode() ? 'radio' : 'itv',
+                    title: item.o_name || item.name,
+                    cover: item.logo,
+                    added_at: new Date().toISOString(),
+                },
+                () => onDone(true),
+                onError
+            );
         }
     }
 
