@@ -118,9 +118,9 @@ describe('UnifiedLiveTab active-player favorite action', () => {
             component.activeItem.set(item);
             component.activeDetail.set({
                 playback: {
-                streamUrl: 'https://example.test/live.ts',
-                title: item.name,
-            },
+                    streamUrl: 'https://example.test/live.ts',
+                    title: item.name,
+                },
                 epgMode: sourceType === 'm3u' ? 'm3u' : 'portal',
             });
             fixture.detectChanges();
