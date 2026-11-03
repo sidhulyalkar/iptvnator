@@ -583,4 +583,28 @@ describe('EpgGuideComponent', () => {
         expect(activate).not.toHaveBeenCalled();
     });
 
+    it('returns focus from the failed-search Retry action to the query field', async () => {
+        await settle(fixture);
+        component.onSearchQueryChange('NFL');
+        component.searchStatus.set('error');
+        await settle(fixture);
+
+        const input: HTMLInputElement = fixture.nativeElement.querySelector(
+            '.guide-toolbar__input--search input'
+        );
+        const retry: HTMLButtonElement = fixture.nativeElement.querySelector(
+            '.epg-guide__search-retry'
+        );
+        const close = jest.fn();
+        component.close.subscribe(close);
+        retry.focus();
+        const escape = new KeyboardEvent('keydown', {
+            key: 'Escape', bubbles: true, cancelable: true,
+        });
+        retry.dispatchEvent(escape);
+        expect(document.activeElement).toBe(input);
+        expect(escape.defaultPrevented).toBe(true);
+        expect(close).not.toHaveBeenCalled();
+    });
+
 });

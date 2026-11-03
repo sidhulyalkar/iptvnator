@@ -1,4 +1,7 @@
-import { EpgGuideSearchController } from './epg-guide-search.controller';
+import {
+    EPG_GUIDE_SEARCH_TIMEOUT_MS,
+    EpgGuideSearchController,
+} from './epg-guide-search.controller';
 import { EpgGuideSearchHit } from './epg-guide-source';
 
 const hit = (title: string): EpgGuideSearchHit => ({
@@ -139,6 +142,68 @@ describe('EpgGuideSearchController request ownership', () => {
         await flush();
         expect(controller.status()).toBe('ready');
         expect(controller.results()[0].program.title).toBe('NHL');
+        controller.destroy();
+    });
+
+    it('fails a stuck provider after its deadline and rejects late results', async () => {
+        let resolve!: (hits: EpgGuideSearchHit[]) => void;
+        const controller = new EpgGuideSearchController(
+            () => new Promise((done) => { resolve = done; })
+        );
+        controller.setQuery('NFL');
+        jest.advanceTimersByTime(300);
+        expect(controller.status()).toBe('loading');
+
+        jest.advanceTimersByTime(EPG_GUIDE_SEARCH_TIMEOUT_MS);
+        expect(controller.status()).toBe('error');
+        expect(controller.results()).toEqual([]);
+
+        resolve([hit('late response')]);
+        await flush();
+        expect(controller.status()).toBe('error');
+        expect(controller.results()).toEqual([]);
+        controller.destroy();
+    });
+
+    it('recovers on retry after a timeout, without accepting old responses', async () => {
+        const resolutions: Array<(hits: EpgGuideSearchHit[]) => void> = [];
+        const controller = new EpgGuideSearchController(
+            () => new Promise((resolve) => resolutions.push(resolve))
+        );
+        controller.setQuery('NFL');
+        jest.advanceTimersByTime(300 + EPG_GUIDE_SEARCH_TIMEOUT_MS);
+        expect(controller.status()).toBe('error');
+
+        controller.setQuery('NFL');
+        expect(controller.status()).toBe('loading');
+        jest.advanceTimersByTime(300);
+        expect(resolutions).toHaveLength(2);
+        resolutions[1]([hit('fresh')]);
+        await flush();
+        expect(controller.status()).toBe('ready');
+        expect(controller.results()[0].program.title).toBe('fresh');
+
+        resolutions[0]([hit('old')]);
+        await flush();
+        jest.advanceTimersByTime(EPG_GUIDE_SEARCH_TIMEOUT_MS);
+        expect(controller.status()).toBe('ready');
+        expect(controller.results()[0].program.title).toBe('fresh');
+        controller.destroy();
+    });
+
+    it('cancels the provider deadline when the query is cleared', async () => {
+        let resolve!: (hits: EpgGuideSearchHit[]) => void;
+        const controller = new EpgGuideSearchController(
+            () => new Promise((done) => { resolve = done; })
+        );
+        controller.setQuery('NFL');
+        jest.advanceTimersByTime(300);
+        controller.setQuery('');
+        jest.advanceTimersByTime(EPG_GUIDE_SEARCH_TIMEOUT_MS);
+        expect(controller.status()).toBe('idle');
+        resolve([hit('stale')]);
+        await flush();
+        expect(controller.results()).toEqual([]);
         controller.destroy();
     });
 

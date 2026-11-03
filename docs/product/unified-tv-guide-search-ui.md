@@ -13,11 +13,11 @@ The guide is a programme **discovery** surface, not a second IPTV player. It kee
 | Unbound guide result | Show programme details only | Labelled **Guide listing only · Channel not in this list**; does not claim a playable channel |
 | Escape | Return to field from results | Escape inside nonempty input clears it; empty input blurs so guide shortcut can close it |
 | Changed source/scope | Reset discovery | Discard old query, old results and pending response; no cross-scope row IDs |
-| Errors | Explain failure and offer Retry | Errors are never presented as zero results |
+| Errors | Explain failure and offer Retry | Rejections or searches pending after 20 seconds become retryable errors, never zero results; late responses are ignored |
 | Loading | Indicate active search | Displayed immediately during debounce and provider query; never pretend "No results" while loading |
 | Empty | No matches reported by host | Only after a successful settled search |
 
-The results container is a labelled region, **not** a fake listbox: the items are native buttons with browser focus behavior. Native Tab order is never captured. The panel is announced via status and alert regions, and the input has an explicit accessible label and relationship to the panel. Channel filter also has an accessible name.
+The results container is a labelled region, **not** a fake listbox: the items are native buttons with browser focus behavior. Escape returns to the query input from results **and** Retry. Native Tab order is never captured. The panel is announced via status and alert regions, and the input has an explicit accessible label and relationship to the panel. Channel filter also has an accessible name.
 
 ## Visual budget
 
