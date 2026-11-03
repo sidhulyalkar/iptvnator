@@ -61,6 +61,29 @@
                         [playbackSessionKey]="playbackSessionKey()"
                     />
                 } @else {
+                    @if (activeRecentFavorite(); as activeFavorite) {
+                        <button
+                            mat-icon-button
+                            type="button"
+                            class="active-recent-favorite"
+                            data-test-id="active-recent-favorite"
+                            [attr.aria-pressed]="favoriteUids().has(activeFavorite.uid)"
+                            [attr.aria-label]="
+                                ((favoriteUids().has(activeFavorite.uid)
+                                    ? 'CHANNELS.REMOVE_FAVORITE'
+                                    : 'CHANNELS.ADD_FAVORITE') | translate) +
+                                ': ' +
+                                activeFavorite.name
+                            "
+                            (click)="toggleActiveRecentFavorite()"
+                        >
+                            <mat-icon aria-hidden="true">{{
+                                favoriteUids().has(activeFavorite.uid)
+                                    ? 'star'
+                                    : 'star_border'
+                            }}</mat-icon>
+                        </button>
+                    }
                     <app-web-player-view
                         [playbackSessionKey]="playbackSessionKey()"
                         [streamUrl]="currentStreamUrl()"

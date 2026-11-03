@@ -328,6 +328,46 @@ describe('UnifiedLiveTabComponent', () => {
         subscription.unsubscribe();
     });
 
+    it('forwards the committed recently watched channel through the canonical favorite action', async () => {
+        const item = buildLiveItem('xtream');
+        const emitted: UnifiedCollectionItem[] = [];
+        component.favoriteToggled.subscribe((value) => emitted.push(value));
+        fixture.componentRef.setInput('items', [item]);
+        fixture.componentRef.setInput('mode', 'recent');
+        component.activeItem.set(item);
+        component.activeDetail.set({
+            playback: { streamUrl: 'https://example.test/live.ts', title: item.name },
+            epgMode: 'portal',
+        });
+        fixture.detectChanges();
+
+        const button = fixture.nativeElement.querySelector(
+            '[data-test-id="active-recent-favorite"]'
+        ) as HTMLButtonElement;
+        expect(button).not.toBeNull();
+        expect(button.getAttribute('aria-pressed')).toBe('false');
+        expect(button.getAttribute('aria-label')).toContain(item.name);
+
+        button.click();
+        expect(emitted).toEqual([item]);
+        expect(button.getAttribute('aria-pressed')).toBe('false');
+
+        fixture.componentRef.setInput('favoriteUids', new Set([item.uid]));
+        fixture.detectChanges();
+        expect(button.getAttribute('aria-pressed')).toBe('true');
+        button.click();
+        expect(emitted).toEqual([item, item]);
+
+        // A pending switch must not expose a button for the previous stream.
+        component.isSelecting.set(true);
+        fixture.detectChanges();
+        expect(
+            fixture.nativeElement.querySelector(
+                '[data-test-id="active-recent-favorite"]'
+            )
+        ).toBeNull();
+    });
+
     it('maps shared live list remove requests back to collection items', async () => {
         const item = buildLiveItem('xtream');
         const removedItems: UnifiedCollectionItem[] = [];

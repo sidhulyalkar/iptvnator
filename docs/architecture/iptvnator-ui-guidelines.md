@@ -43,6 +43,14 @@ Use it when changing existing views or introducing new list-based UI in the work
    appearance rather than fullscreen chrome, exaggerated glow or perpetual
    animation. Respect reduced motion and preserve the media-first layout.
 
+The Recently Viewed inline video player also exposes a compact, accessible
+favorite action for its **committed** M3U, Xtream or Stalker selection, reusing
+the collection's existing `favoriteToggled` event and confirmed favorite
+UID state. It is hidden for pending changes, vanished catalog items and the
+Favorites-only route, which currently unmounts playback on active-item removal.
+This is not a second persistence service. Dedicated per-source live views and
+radio controls remain separate follow-ups.
+
 The staged frontend configuration and experience roadmap is recorded in
 [Unified TV frontend configuration](../../.plans/2026-11-03-unified-tv-frontend-configuration.md).
 It specifies when capability-aware features may become visible and the
