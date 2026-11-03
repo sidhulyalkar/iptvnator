@@ -1,5 +1,8 @@
 import { TestBed } from '@angular/core/testing';
-import { ElectronStreamHeadersService } from './electron-stream-headers.service';
+import {
+    ELECTRON_STREAM_HEADER_SETUP_TIMEOUT_MS,
+    ElectronStreamHeadersService,
+} from './electron-stream-headers.service';
 
 const STREAM_URL = 'http://portal.example:8080/live/ch1.ts';
 const GATED_PLAYBACK = {
@@ -95,11 +98,12 @@ describe('ElectronStreamHeadersService', () => {
             streamUrl: 'http://portal.example:8080/live/ch2.ts',
         });
 
-        resolvers[0]();
-        resolvers[1]();
-
+        // The old waiter settles immediately, even if its IPC hangs.
         await expect(first).resolves.toBe(false);
+        resolvers[1]();
         await expect(second).resolves.toBe(true);
+        // A late result cannot revive the superseded request.
+        resolvers[0]();
     });
 
     it('clears the override only while the caller still owns the slot', async () => {
@@ -150,6 +154,94 @@ describe('ElectronStreamHeadersService', () => {
             '[ElectronStreamHeaders] Request-header setup failed'
         );
         warn.mockRestore();
+    });
+
+    it('bounds a hung Electron header IPC and never reports a late success', async () => {
+        jest.useFakeTimers();
+        const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+        try {
+            let finish: (value: boolean) => void = () => undefined;
+            setUserAgent.mockImplementation(
+                () =>
+                    new Promise<boolean>((resolve) => {
+                        finish = resolve;
+                    })
+            );
+
+            const pending = service.apply(GATED_PLAYBACK);
+            jest.advanceTimersByTime(ELECTRON_STREAM_HEADER_SETUP_TIMEOUT_MS - 1);
+            expect(warn).not.toHaveBeenCalled();
+            jest.advanceTimersByTime(1);
+            await expect(pending).resolves.toBe(false);
+            expect(warn).toHaveBeenCalledWith(
+                '[ElectronStreamHeaders] Request-header setup failed'
+            );
+
+            finish(true);
+            await Promise.resolve();
+            // The result stays failed after the late IPC response.
+            await expect(pending).resolves.toBe(false);
+            expect(warn).toHaveBeenCalledTimes(1);
+        } finally {
+            warn.mockRestore();
+            jest.useRealTimers();
+        }
+    });
+
+    it('unblocks the superseded waiter before its deadline', async () => {
+        jest.useFakeTimers();
+        try {
+            const resolvers: Array<() => void> = [];
+            setUserAgent.mockImplementation(
+                () =>
+                    new Promise<boolean>((resolve) =>
+                        resolvers.push(() => resolve(true))
+                    )
+            );
+
+            const first = service.apply(GATED_PLAYBACK);
+            const second = service.apply({
+                ...GATED_PLAYBACK,
+                streamUrl: 'http://portal.example:8080/live/ch2.ts',
+            });
+            await expect(first).resolves.toBe(false);
+            expect(resolvers).toHaveLength(2);
+            resolvers[1]();
+            await expect(second).resolves.toBe(true);
+            jest.advanceTimersByTime(ELECTRON_STREAM_HEADER_SETUP_TIMEOUT_MS);
+            resolvers[0]();
+            await Promise.resolve();
+            await expect(first).resolves.toBe(false);
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
+    it('cancels an outstanding handoff when its scoped header lease is cleared', async () => {
+        setUserAgent.mockImplementationOnce(
+            () => new Promise<boolean>(() => undefined)
+        );
+        const pending = service.apply(GATED_PLAYBACK);
+        service.clear(STREAM_URL);
+        await expect(pending).resolves.toBe(false);
+        expect(setUserAgent).toHaveBeenLastCalledWith(
+            undefined,
+            undefined,
+            STREAM_URL
+        );
+    });
+
+    it('requires positive IPC acknowledgment before the player can mount', async () => {
+        const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+        try {
+            setUserAgent.mockResolvedValue(false);
+            await expect(service.apply(GATED_PLAYBACK)).resolves.toBe(false);
+            expect(warn).toHaveBeenCalledWith(
+                '[ElectronStreamHeaders] Request-header setup failed'
+            );
+        } finally {
+            warn.mockRestore();
+        }
     });
 
 });

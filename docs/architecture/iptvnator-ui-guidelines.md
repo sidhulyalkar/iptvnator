@@ -43,6 +43,11 @@ Use it when changing existing views or introducing new list-based UI in the work
    appearance rather than fullscreen chrome, exaggerated glow or perpetual
    animation. Respect reduced motion and preserve the media-first layout.
 
+The staged frontend configuration and experience roadmap is recorded in
+[Unified TV frontend configuration](../../.plans/2026-11-03-unified-tv-frontend-configuration.md).
+It specifies when capability-aware features may become visible and the
+validation gates before changing navigation or playback defaults.
+
 ## Angular Material's Role
 
 Decision of 2026-10-12. The repository has no ADR folder; decisions live in

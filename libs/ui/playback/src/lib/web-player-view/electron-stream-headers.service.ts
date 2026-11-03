@@ -32,12 +32,17 @@ function getHeaderValue(
  * only while the caller's stream still owns it, so a consumer being destroyed
  * cannot wipe the override a newer consumer just configured.
  */
+/** IPC registration must settle independently of the media/network timeout. */
+export const ELECTRON_STREAM_HEADER_SETUP_TIMEOUT_MS = 15_000;
+
 @Injectable({ providedIn: 'root' })
 export class ElectronStreamHeadersService {
     /** Guards against a superseded apply resolving its header IPC late. */
     private syncSequence = 0;
     /** Stream URL the currently configured override belongs to. */
     private currentScopeUrl: string | null = null;
+    /** Unblocks an older pending consumer immediately on source replacement. */
+    private cancelPendingApply: (() => void) | null = null;
 
     /**
      * Configures the scoped override for this playback. Resolves `true` when
@@ -48,9 +53,11 @@ export class ElectronStreamHeadersService {
      * synchronously and no override exists.
      */
     apply(playback: ResolvedPortalPlayback): Promise<boolean> | null {
-        // Feature-detect the bridge method rather than the bridge object:
-        // partial bridges (tests, older preloads) must behave like the PWA
-        // instead of throwing inside a playback flow.
+        // A hanging IPC for channel A must not retain an awaiting audio/video
+        // caller after channel B is selected, even when A never settles.
+        this.cancelPendingApply?.();
+        this.cancelPendingApply = null;
+        // Feature-detect the actual method, not just the Electron bridge.
         if (typeof window.electron?.setUserAgent !== 'function') {
             return null;
         }
@@ -65,35 +72,54 @@ export class ElectronStreamHeadersService {
         const authorization = getHeaderValue(playback.headers, 'Authorization');
 
         this.currentScopeUrl = playback.streamUrl;
-        // An IPC failure is not evidence that credential-bearing request
-        // overrides were installed. Never mount the engine on that assumption.
-        // Do not log the caught exception: some bridge errors contain URLs or
-        // request values that must not reach the console.
+        // Do not log raw IPC exceptions: they can contain portal credentials.
+        let ipc: Promise<boolean>;
         try {
-            return window.electron
-                .setUserAgent(
-                    userAgent,
-                    referer,
-                    playback.streamUrl,
-                    cookie || authorization
-                        ? { authorization, cookie }
-                        : undefined
-                )
-                .then(
-                    () => sequence === this.syncSequence,
-                    () => {
-                        console.warn(
-                            '[ElectronStreamHeaders] Request-header setup failed'
-                        );
-                        return false;
-                    }
-                );
+            ipc = window.electron.setUserAgent(
+                userAgent,
+                referer,
+                playback.streamUrl,
+                cookie || authorization
+                    ? { authorization, cookie }
+                    : undefined
+            );
         } catch {
             console.warn(
                 '[ElectronStreamHeaders] Request-header setup failed'
             );
             return Promise.resolve(false);
         }
+
+        return new Promise<boolean>((resolve) => {
+            let settled = false;
+            const settle = (succeeded: boolean, failed = false): void => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(deadline);
+                if (this.cancelPendingApply === cancel) {
+                    this.cancelPendingApply = null;
+                }
+                if (failed && sequence === this.syncSequence) {
+                    console.warn(
+                        '[ElectronStreamHeaders] Request-header setup failed'
+                    );
+                }
+                resolve(succeeded && sequence === this.syncSequence);
+            };
+            const cancel = (): void => settle(false);
+            // This is only the IPC handoff deadline, not media readiness.
+            // A late fulfillment must never install a player from this result.
+            const deadline = setTimeout(
+                () => settle(false, true),
+                ELECTRON_STREAM_HEADER_SETUP_TIMEOUT_MS
+            );
+            this.cancelPendingApply = cancel;
+            void Promise.resolve(ipc).then(
+                (acknowledged) =>
+                    settle(acknowledged === true, acknowledged !== true),
+                () => settle(false, true)
+            );
+        });
     }
 
     /**
@@ -110,6 +136,8 @@ export class ElectronStreamHeadersService {
             return;
         }
 
+        this.cancelPendingApply?.();
+        this.cancelPendingApply = null;
         this.syncSequence += 1;
         this.currentScopeUrl = null;
         void window.electron
