@@ -47,26 +47,6 @@
     }
 }
 
-.active-recent-favorite {
-    position: absolute;
-    inset-block-start: 12px;
-    inset-inline-end: 12px;
-    z-index: 4;
-    app-region: no-drag;
-    background: var(--mat-sys-surface-container-high);
-    color: var(--mat-sys-on-surface);
-    border: 1px solid var(--app-separator);
-
-    &[aria-pressed='true'] {
-        color: var(--app-selection-color);
-    }
-
-    &:focus-visible {
-        outline: 2px solid var(--app-selection-color);
-        outline-offset: 2px;
-    }
-}
-
 .radio-close-btn {
     position: absolute;
     top: 16px;

@@ -1,0 +1,22 @@
+@if (actionable(); as channel) {
+    <button
+        mat-icon-button
+        type="button"
+        data-test-id="active-recent-favorite"
+        [attr.aria-pressed]="favoriteUids().has(channel.uid)"
+        [attr.aria-label]="
+            ((favoriteUids().has(channel.uid)
+                ? 'CHANNELS.REMOVE_FAVORITE'
+                : 'CHANNELS.ADD_FAVORITE') | translate) +
+            ': ' +
+            channel.name +
+            ' · ' +
+            sourceLabel()
+        "
+        (click)="toggle()"
+    >
+        <mat-icon aria-hidden="true">{{
+            favoriteUids().has(channel.uid) ? 'star' : 'star_border'
+        }}</mat-icon>
+    </button>
+}

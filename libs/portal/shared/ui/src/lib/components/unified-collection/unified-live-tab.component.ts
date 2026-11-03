@@ -1,7 +1,4 @@
-import {
-    isCatalogUnavailable,
-    playlistDisplayLabel,
-} from '@iptvnator/shared/interfaces';
+import { isCatalogUnavailable } from '@iptvnator/shared/interfaces';
 import {
     ChangeDetectionStrategy,
     Component,
@@ -69,7 +66,7 @@ import { createUnifiedLiveRecording } from './unified-live-recording-metadata';
 import { createUnifiedLiveSelection } from './unified-live-selection';
 import { createUnifiedLiveSelectionGeneration } from './unified-live-selection-generation';
 import { createUnifiedLiveSelectionView } from './unified-live-selection-view';
-import { resolveActiveRecentFavorite } from './active-recent-favorite';
+import { ActiveRecentFavoriteButtonComponent } from './active-recent-favorite-button.component';
 
 @Component({
     selector: 'app-unified-live-tab',
@@ -77,6 +74,7 @@ import { resolveActiveRecentFavorite } from './active-recent-favorite';
     styleUrl: './unified-live-tab.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [
+        ActiveRecentFavoriteButtonComponent,
         AudioPlayerComponent,
         EpgListViewComponent,
         EpgTimelineComponent,
@@ -161,19 +159,6 @@ export class UnifiedLiveTabComponent implements FullscreenChannelPanelHost {
      *  supply credentials for Xtream catch-up URL resolution. */
     readonly activeItem = signal<UnifiedCollectionItem | null>(null);
     readonly isSelecting = signal(false);
-    /** Only committed, still-available Recently Viewed playback is actionable. */
-    readonly activeRecentFavorite = computed(() =>
-        resolveActiveRecentFavorite({
-            mode: this.mode(),
-            items: this.items(),
-            activeItem: this.activeItem(),
-            hasActiveDetail: this.activeDetail() !== null,
-            selectionPending: this.isSelecting(),
-        })
-    );
-    readonly activeRecentFavoriteSourceLabel = computed(() =>
-        playlistDisplayLabel(this.activeRecentFavorite()?.playlistName)
-    );
     /** Catch-up override for the active channel; null = live playback. */
     readonly activeTimeshift = signal<UnifiedLiveTimeshift | null>(null);
     readonly progressTick = signal(0);
@@ -370,11 +355,6 @@ export class UnifiedLiveTabComponent implements FullscreenChannelPanelHost {
         if (item && !isCatalogUnavailable(item)) {
             await this.selection.activate(item, false, true);
         }
-    }
-
-    toggleActiveRecentFavorite(): void {
-        const item = this.activeRecentFavorite();
-        if (item) this.favoriteToggled.emit(item);
     }
 
     onFavoriteToggled(channel: UnifiedFavoriteChannel): void {
