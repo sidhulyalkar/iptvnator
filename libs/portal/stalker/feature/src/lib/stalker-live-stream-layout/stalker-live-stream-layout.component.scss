@@ -102,3 +102,8 @@
         padding-inline: 6px;
     }
 }
+
+// Keep the shared favorite button anchored inside the media stage.
+.video-player {
+    position: relative;
+}
