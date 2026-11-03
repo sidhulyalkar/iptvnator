@@ -3,7 +3,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { Store } from '@ngrx/store';
 import { TranslateService } from '@ngx-translate/core';
-import { of, throwError } from 'rxjs';
+import { EMPTY, of, throwError } from 'rxjs';
 import { PlaylistActions } from '@iptvnator/m3u-state';
 import { PlaylistsService } from '@iptvnator/services';
 import { PlaylistMeta } from '@iptvnator/shared/interfaces';
@@ -194,7 +194,25 @@ describe('withStalkerFavorites', () => {
         expect(playlistService.removeFromPortalFavorites).not.toHaveBeenCalled();
     });
 
+    it('treats an empty add response as an unconfirmed write', () => {
+        playlistService.addPortalFavorite.mockReturnValueOnce(EMPTY);
+        const done = jest.fn();
+        const failed = jest.fn();
+        store.addToFavorites({ id: '42' }, done, failed);
+        expect(done).not.toHaveBeenCalled();
+        expect(failed).toHaveBeenCalledTimes(1);
+    });
+
     describe('removeFromFavorites', () => {
+        it('treats an empty remove response as an unconfirmed write', () => {
+            playlistService.removeFromPortalFavorites.mockReturnValueOnce(EMPTY);
+            const done = jest.fn();
+            const failed = jest.fn();
+            store.removeFromFavorites('42', done, failed);
+            expect(done).not.toHaveBeenCalled();
+            expect(failed).toHaveBeenCalledTimes(1);
+        });
+
         it('removes the favorite and syncs the emptied playlist meta', () => {
             const onDone = jest.fn();
 

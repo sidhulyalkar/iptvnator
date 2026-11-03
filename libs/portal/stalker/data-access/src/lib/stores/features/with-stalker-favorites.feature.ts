@@ -51,6 +51,7 @@ export function withStalkerFavorites() {
                             return;
                         }
 
+                        let acknowledged = false;
                         playlistService
                             .addPortalFavorite(portalId, {
                                 ...item,
@@ -72,6 +73,7 @@ export function withStalkerFavorites() {
                             })
                             .subscribe({
                                 next: (updatedPlaylist) => {
+                                    acknowledged = true;
                                     dispatchStalkerPlaylistMetaUpdate(
                                         ngrxStore,
                                         portalId,
@@ -98,6 +100,9 @@ export function withStalkerFavorites() {
                                     );
                                     onError?.();
                                 },
+                                complete: () => {
+                                    if (!acknowledged) onError?.();
+                                },
                             });
                     },
                     removeFromFavorites(
@@ -111,10 +116,12 @@ export function withStalkerFavorites() {
                             return;
                         }
 
+                        let acknowledged = false;
                         playlistService
                             .removeFromPortalFavorites(portalId, favoriteId)
                             .subscribe({
                                 next: (updatedPlaylist) => {
+                                    acknowledged = true;
                                     dispatchStalkerPlaylistMetaUpdate(
                                         ngrxStore,
                                         portalId,
@@ -140,6 +147,9 @@ export function withStalkerFavorites() {
                                         { duration: 6000 }
                                     );
                                     onError?.();
+                                },
+                                complete: () => {
+                                    if (!acknowledged) onError?.();
                                 },
                             });
                     },
