@@ -147,6 +147,7 @@ import {
 import { M3uEpgGuideSourceService } from '../epg-guide/m3u-epg-guide-source.service';
 import { M3uVodDetailComponent } from '../m3u-vod-detail/m3u-vod-detail.component';
 import { M3uFullscreenChannelListComponent } from './fullscreen-channel-list/m3u-fullscreen-channel-list.component';
+import { M3uLivePlayerFavoriteComponent } from './m3u-live-player-favorite.component';
 import { createM3uChannelPlaybackRequest } from './m3u-channel-playback-actions';
 
 const M3U_EPG_GUIDE_HEADER_ACTION_ID = 'm3u-epg-guide';
@@ -208,6 +209,7 @@ function isInsideScrollableRegion(
         EpgListViewComponent,
         EpgTimelineComponent,
         M3uFullscreenChannelListComponent,
+        M3uLivePlayerFavoriteComponent,
         M3uVodDetailComponent,
         MatButtonModule,
         MatIconModule,
@@ -276,6 +278,8 @@ export class VideoPlayerComponent
             ? createPlaybackSessionKey({ kind: 'live', sourceId, contentId })
             : '';
     });
+    /** Shared playlist-scoped M3U favorites URLs (same as the channel rail). */
+    readonly favoriteUrls = this.store.selectSignal(selectFavorites);
     readonly channels = this.store.selectSignal(selectChannels);
     readonly channelsLoading = this.store.selectSignal(selectChannelsLoading);
     readonly activePlaylistRecentItems = computed(
