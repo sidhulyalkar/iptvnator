@@ -41,7 +41,12 @@ export function hasStalkerLiveFavorite(
     channelId: string
 ): boolean {
     return favorites.some((favorite) => {
-        const id = favorite.stream_id || favorite.id;
-        return id != null && normalizeStalkerEntityId(id) === channelId;
+        const contentType = String(favorite.category_id ?? '')
+            .trim()
+            .toLowerCase();
+        if (['vod', 'series', 'radio'].includes(contentType)) return false;
+        const streamId = normalizeStalkerEntityId(favorite.stream_id);
+        const id = streamId || normalizeStalkerEntityId(favorite.id);
+        return Boolean(id) && id === channelId;
     });
 }

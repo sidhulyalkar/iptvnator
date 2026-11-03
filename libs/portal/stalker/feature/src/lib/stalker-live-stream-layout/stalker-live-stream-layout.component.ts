@@ -24,7 +24,6 @@ import {
     viewChildren,
 } from '@angular/core';
 import { Router } from '@angular/router';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -98,7 +97,6 @@ import {
 } from '@iptvnator/portal/shared/ui';
 import {
     ACTIVE_EPG_FALLBACK_SIZE,
-    StalkerFavoriteItem,
     StalkerItvChannel,
     StalkerStore,
     normalizeStalkerEntityId,
@@ -714,13 +712,16 @@ export class StalkerLiveStreamLayoutComponent
                             return;
                         this.favorites.clear();
                         for (const favorite of favorites) {
-                            const id = favorite.stream_id || favorite.id;
-                            if (id != null) {
-                                this.favorites.set(
-                                    normalizeStalkerEntityId(id),
-                                    true
-                                );
+                            const type = String(favorite.category_id ?? '')
+                                .trim()
+                                .toLowerCase();
+                            if (['vod', 'series', 'radio'].includes(type)) {
+                                continue;
                             }
+                            const id =
+                                normalizeStalkerEntityId(favorite.stream_id) ||
+                                normalizeStalkerEntityId(favorite.id);
+                            if (id) this.favorites.set(id, true);
                         }
                         this.favoriteRevision.update((value) => value + 1);
                         this.cdr.markForCheck();
