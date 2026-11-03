@@ -700,6 +700,7 @@ export class StalkerLiveStreamLayoutComponent
         // favorites belonging to a previously selected portal.
         effect((onCleanup) => {
             const playlistId = this.stalkerStore.currentPlaylist()?._id;
+            const radioMode = this.isRadioMode();
             this.favorites.clear();
             this.favoriteRevision.update((value) => value + 1);
             this.cdr.markForCheck();
@@ -715,9 +716,10 @@ export class StalkerLiveStreamLayoutComponent
                             const type = String(favorite.category_id ?? '')
                                 .trim()
                                 .toLowerCase();
-                            if (['vod', 'series', 'radio'].includes(type)) {
-                                continue;
-                            }
+                            const wrongType = radioMode
+                                ? ['vod', 'series', 'itv'].includes(type)
+                                : ['vod', 'series', 'radio'].includes(type);
+                            if (wrongType) continue;
                             const id =
                                 normalizeStalkerEntityId(favorite.stream_id) ||
                                 normalizeStalkerEntityId(favorite.id);
@@ -1172,11 +1174,13 @@ export class StalkerLiveStreamLayoutComponent
         );
         const channelId = normalizeStalkerEntityId(item.id);
         const favoriteId = normalizeStalkerEntityId(item.stream_id) || channelId;
-        const key = `${playlistId}:${favoriteId}`;
+        const radioMode = this.isRadioMode();
+        const key = `${playlistId}:${radioMode}:${favoriteId}`;
         if (!playlistId || !favoriteId || this.pendingFavorites.has(key)) return;
         this.pendingFavorites.add(key);
         const onDone = (isFavorite: boolean) => {
             this.pendingFavorites.delete(key);
+            if (this.isRadioMode() !== radioMode) return;
             this.onPlayerFavoriteConfirmed({
                 playlistId,
                 channelId,
