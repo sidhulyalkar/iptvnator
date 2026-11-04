@@ -197,6 +197,7 @@ describe('main preload DB IPC contract', () => {
             'ChannelAgent/1.0',
             'https://portal.example/referrer',
             'https://stream.example/live.m3u8',
+            undefined,
             undefined
         );
     });
@@ -222,7 +223,28 @@ describe('main preload DB IPC contract', () => {
             {
                 authorization: 'Bearer TOKEN',
                 cookie: 'mac=00%3A1A%3A79%3A00%3A00%3A01',
-            }
+            },
+            undefined
+        );
+    });
+
+    it('forwards session setup and lease-based stream header cleanup', async () => {
+        const api = getExposedApi();
+        await api.beginStreamHeaderSession();
+        expect(mockIpcRenderer.invoke).toHaveBeenLastCalledWith(
+            'begin-stream-header-session'
+        );
+        const lease = { epoch: 9, generation: 3 };
+        await api.releaseStreamHeaders(lease, 'https://stream.example/a.m3u8');
+        expect(mockIpcRenderer.invoke).toHaveBeenLastCalledWith(
+            'release-stream-headers', lease, 'https://stream.example/a.m3u8'
+        );
+        await api.setUserAgent(
+            'Agent/1', null, 'https://stream.example/a.m3u8', undefined, lease
+        );
+        expect(mockIpcRenderer.invoke).toHaveBeenLastCalledWith(
+            'set-user-agent', 'Agent/1', null,
+            'https://stream.example/a.m3u8', undefined, lease
         );
     });
 
