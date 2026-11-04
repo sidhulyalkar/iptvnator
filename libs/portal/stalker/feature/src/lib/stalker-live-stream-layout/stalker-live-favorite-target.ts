@@ -48,7 +48,9 @@ export function hasStalkerLiveFavorite(
         const contentType = String(favorite.category_id ?? '')
             .trim()
             .toLowerCase();
-        if (['vod', 'series', 'radio'].includes(contentType)) return false;
+        // A legacy numeric category ID is not proof that this is ITV.
+        // The same provider ID can also identify radio, VOD, or series.
+        if (contentType !== 'itv') return false;
         const streamId = normalizeStalkerEntityId(favorite.stream_id);
         const id = streamId || normalizeStalkerEntityId(favorite.id);
         return Boolean(id) && id === channelId;
