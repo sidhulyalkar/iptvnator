@@ -84,6 +84,43 @@ describe('main process scoped stream header leases', () => {
         expect(applied).toHaveLength(1);
     });
 
+    it('does not let stale A cleanup acknowledge or supersede C', () => {
+        const epoch = controller.begin(5);
+        expect(controller.apply(5, { epoch, generation: 1 }, request('A'))).toBe(true);
+        expect(controller.apply(5, { epoch, generation: 3 }, request('C'))).toBe(true);
+        const before = clears;
+        expect(controller.release(5, { epoch, generation: 4 }, request('A').scopeUrl)).toBe(false);
+        expect(clears).toBe(before);
+        // Rejected release must not consume generation 4.
+        expect(controller.release(5, { epoch, generation: 4 }, request('C').scopeUrl)).toBe(true);
+        expect(clears).toBe(before + 1);
+    });
+
+    it('retires credentials when the owning webContents is destroyed', () => {
+        const epoch = controller.begin(22);
+        controller.apply(22, { epoch, generation: 1 }, request('A'));
+        const before = clears;
+        expect(controller.retire(23, epoch)).toBe(false);
+        expect(controller.retire(22, epoch - 1)).toBe(false);
+        expect(clears).toBe(before);
+
+        expect(controller.retire(22, epoch)).toBe(true);
+        expect(controller.hasSession()).toBe(false);
+        expect(clears).toBe(before + 1);
+        expect(controller.apply(22, { epoch, generation: 99 }, request('A'))).toBe(false);
+        expect(controller.retire(22, epoch)).toBe(false);
+    });
+
+    it('ignores delayed destruction events from a previous renderer epoch', () => {
+        const oldEpoch = controller.begin(11);
+        const newEpoch = controller.begin(11);
+        expect(controller.apply(11, { epoch: newEpoch, generation: 1 }, request('B'))).toBe(true);
+        const before = clears;
+        expect(controller.retire(11, oldEpoch)).toBe(false);
+        expect(clears).toBe(before);
+        expect(controller.release(11, { epoch: newEpoch, generation: 2 }, request('B').scopeUrl)).toBe(true);
+    });
+
     it('fails closed when applying headers throws and does not log secrets', () => {
         const failing = new ScopedStreamHeaderLeaseController(
             () => { throw new Error('private cookie'); },
