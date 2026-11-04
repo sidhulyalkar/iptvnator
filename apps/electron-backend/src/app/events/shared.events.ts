@@ -53,6 +53,7 @@ ipcMain.handle('begin-stream-header-session', (event) => {
 ipcMain.handle(
     'set-user-agent',
     (event, userAgent, referer, scopeUrl, credentials, lease?: ScopedHeaderLease) => {
+        if (event.sender.isDestroyed()) return false;
         if (lease !== undefined) {
             return scopedHeaderLease.apply(event.sender.id, lease, {
                 userAgent, referer, scopeUrl,
@@ -61,7 +62,8 @@ ipcMain.handle(
         }
         // Legacy unscoped playlist defaults remain supported. Scoped legacy
         // calls cannot bypass the active generation gate after session start.
-        if (scopeUrl != null && scopedHeaderLease.hasSession()) return false;
+        if (scopeUrl != null &&
+            scopedHeaderLease.hasActivatedLeaseProtocol()) return false;
         setUserAgent(userAgent, referer, scopeUrl, sanitizeCredentials(credentials));
         return true;
     }
@@ -70,6 +72,7 @@ ipcMain.handle(
 ipcMain.handle(
     'release-stream-headers',
     (event, lease: ScopedHeaderLease, scopeUrl: string) =>
+        !event.sender.isDestroyed() &&
         scopedHeaderLease.release(event.sender.id, lease, scopeUrl)
 );
 
