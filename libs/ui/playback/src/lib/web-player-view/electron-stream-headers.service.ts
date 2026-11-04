@@ -24,6 +24,7 @@ export const ELECTRON_STREAM_HEADER_SETUP_TIMEOUT_MS = 15_000;
 export class ElectronStreamHeadersService {
     private syncSequence = 0;
     private currentScopeUrl: string | null = null;
+    private currentOwner: object | null = null;
     private cancelPendingApply: (() => void) | null = null;
     private sessionEpoch: Promise<number> | null = null;
 
@@ -52,6 +53,7 @@ export class ElectronStreamHeadersService {
         if (this.currentScopeUrl !== scopeUrl) return;
         const generation = ++this.syncSequence;
         this.currentScopeUrl = null;
+        this.currentOwner = null;
         const bridge = window.electron;
         const epoch = this.sessionEpoch;
         if (!bridge || !epoch) return;
@@ -67,7 +69,7 @@ export class ElectronStreamHeadersService {
      * Returns null only in a PWA. A partially upgraded Electron bridge fails
      * closed (false), never silently starts an authenticated media request.
      */
-    apply(playback: ResolvedPortalPlayback): Promise<boolean> | null {
+    apply(playback: ResolvedPortalPlayback, owner: object = this): Promise<boolean> | null {
         this.cancelPendingApply?.();
         this.cancelPendingApply = null;
 
@@ -87,6 +89,7 @@ export class ElectronStreamHeadersService {
         const cookie = getHeaderValue(playback.headers, 'Cookie');
         const authorization = getHeaderValue(playback.headers, 'Authorization');
         this.currentScopeUrl = playback.streamUrl;
+        this.currentOwner = owner;
 
         let ipc: Promise<boolean>;
         try {
@@ -135,8 +138,11 @@ export class ElectronStreamHeadersService {
     }
 
     /** A destroyed/obsolete surface never clears a different active URL. */
-    clear(streamUrl: string | null): void {
-        if (!streamUrl || this.currentScopeUrl !== streamUrl) return;
+    clear(streamUrl: string | null, owner: object = this): void {
+        if (
+            !streamUrl || this.currentScopeUrl !== streamUrl ||
+            this.currentOwner !== owner
+        ) return;
         this.cancelPendingApply?.();
         this.cancelPendingApply = null;
         this.releaseActive(streamUrl);

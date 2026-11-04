@@ -65,7 +65,7 @@ export class WebPlayerApplicationHandoffCoordinator {
         fail: () => void
     ): void {
         this.activeOwnership = Object.freeze({ binding, token });
-        const headerSync = this.streamHeaders.apply(playback);
+        const headerSync = this.streamHeaders.apply(playback, this);
         this.headerScopeStreamUrl = playback.streamUrl;
         const acceptSource = (): void => {
             const options = createVideoJsOptions({
@@ -130,7 +130,7 @@ export class WebPlayerApplicationHandoffCoordinator {
 
     release(): void {
         this.invalidate();
-        this.streamHeaders.clear(this.headerScopeStreamUrl);
+        this.streamHeaders.clear(this.headerScopeStreamUrl, this);
         this.headerScopeStreamUrl = null;
     }
 

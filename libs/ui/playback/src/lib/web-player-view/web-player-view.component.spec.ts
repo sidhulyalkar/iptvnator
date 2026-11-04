@@ -985,11 +985,15 @@ describe('WebPlayerViewComponent', () => {
             },
         };
         let setUserAgent: jest.Mock;
+        let releaseStreamHeaders: jest.Mock;
 
         beforeEach(() => {
             setUserAgent = jest.fn().mockResolvedValue(true);
+            releaseStreamHeaders = jest.fn().mockResolvedValue(true);
             (window as unknown as { electron?: unknown }).electron = {
+                beginStreamHeaderSession: jest.fn().mockResolvedValue(1),
                 setUserAgent,
+                releaseStreamHeaders,
             };
         });
 
@@ -1005,6 +1009,8 @@ describe('WebPlayerViewComponent', () => {
 
             // The source is handed over only after the override IPC resolves,
             // so the first media request already carries the credentials.
+            await Promise.resolve();
+            await Promise.resolve();
             expect(setUserAgent).toHaveBeenCalledWith(
                 'MAG250',
                 'http://portal.example',
@@ -1012,7 +1018,8 @@ describe('WebPlayerViewComponent', () => {
                 {
                     authorization: 'Bearer TOKEN123',
                     cookie: 'mac=00%3A1A%3A79%3A00%3A00%3A01; stb_lang=en_US',
-                }
+                },
+                expect.objectContaining({ epoch: 1, generation: expect.any(Number) })
             );
             expect(component.channel()).toBeUndefined();
 
@@ -1036,7 +1043,8 @@ describe('WebPlayerViewComponent', () => {
                 'PlainAgent/1.0',
                 undefined,
                 'https://example.com/live/plain.m3u8',
-                undefined
+                undefined,
+                expect.objectContaining({ epoch: 1, generation: expect.any(Number) })
             );
         });
 
@@ -1058,6 +1066,10 @@ describe('WebPlayerViewComponent', () => {
                 headers: GATED_PLAYBACK.headers,
             });
             fixture.detectChanges();
+            await Promise.resolve();
+            await Promise.resolve();
+            await Promise.resolve();
+            expect(resolvers).toHaveLength(2);
 
             // The stale IPC completion must not hand the old source over.
             resolvers[0]();
@@ -1075,13 +1087,14 @@ describe('WebPlayerViewComponent', () => {
             fixture.componentRef.setInput('playback', GATED_PLAYBACK);
             fixture.detectChanges();
             await fixture.whenStable();
-            setUserAgent.mockClear();
+            releaseStreamHeaders.mockClear();
 
             fixture.destroy();
+            await Promise.resolve();
+            await Promise.resolve();
 
-            expect(setUserAgent).toHaveBeenCalledWith(
-                undefined,
-                undefined,
+            expect(releaseStreamHeaders).toHaveBeenCalledWith(
+                expect.objectContaining({ epoch: 1, generation: expect.any(Number) }),
                 GATED_STREAM_URL
             );
         });

@@ -961,7 +961,7 @@ export class StalkerLiveStreamLayoutComponent
         // layout. The service no-ops when a newer playback already owns the
         // override slot.
         this.playbackRequestId += 1;
-        this.streamHeaders.clear(this.radioHeaderScopeUrl);
+        this.streamHeaders.clear(this.radioHeaderScopeUrl, this);
         this.clearActivePlayback();
     }
 
@@ -998,7 +998,7 @@ export class StalkerLiveStreamLayoutComponent
         // selection that never mounts a player surface of its own — external
         // video playback and failed resolutions would otherwise keep the old
         // radio credentials installed for that origin.
-        this.streamHeaders.clear(this.radioHeaderScopeUrl);
+        this.streamHeaders.clear(this.radioHeaderScopeUrl, this);
         this.radioHeaderScopeUrl = null;
 
         try {
@@ -1028,7 +1028,7 @@ export class StalkerLiveStreamLayoutComponent
                 // in flight, ngOnDestroy must already know which stream's
                 // override to clear — otherwise the credentials would
                 // outlive the route.
-                const headerSync = this.streamHeaders.apply(playback);
+                const headerSync = this.streamHeaders.apply(playback, this);
                 this.radioHeaderScopeUrl = playback.streamUrl;
                 const stillCurrent = headerSync ? await headerSync : true;
                 if (

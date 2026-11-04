@@ -205,6 +205,8 @@ describe('StalkerLiveStreamLayoutComponent', () => {
         installElectronBridge({
             platform: 'darwin',
             setUserAgent: jest.fn().mockResolvedValue(true),
+            beginStreamHeaderSession: jest.fn().mockResolvedValue(1),
+            releaseStreamHeaders: jest.fn().mockResolvedValue(true),
             updateRemoteControlStatus: jest.fn(),
             onChannelChange: jest.fn(() => jest.fn()),
             onRemoteControlCommand: jest.fn(() => jest.fn()),
@@ -1414,7 +1416,8 @@ describe('StalkerLiveStreamLayoutComponent', () => {
             {
                 authorization: 'Bearer TOKEN99',
                 cookie: 'mac=00:1A:79:00:00:01',
-            }
+            },
+            expect.objectContaining({ epoch: 1, generation: expect.any(Number) })
         );
 
         const audioPlayer = fixture.debugElement.query(
@@ -1461,9 +1464,10 @@ describe('StalkerLiveStreamLayoutComponent', () => {
         resolveApply?.();
         await playPromise;
 
-        expect(window.electron?.setUserAgent).toHaveBeenLastCalledWith(
-            undefined,
-            undefined,
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(window.electron?.releaseStreamHeaders).toHaveBeenCalledWith(
+            expect.objectContaining({ epoch: 1, generation: expect.any(Number) }),
             'http://portal.example/radio_2.mpg'
         );
         expect(component.activePlayback()).toBeNull();
@@ -1491,9 +1495,10 @@ describe('StalkerLiveStreamLayoutComponent', () => {
         await component.playChannel(itvChannels()[0]);
         await fixture.whenStable();
 
-        expect(window.electron?.setUserAgent).toHaveBeenLastCalledWith(
-            undefined,
-            undefined,
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(window.electron?.releaseStreamHeaders).toHaveBeenCalledWith(
+            expect.objectContaining({ epoch: 1, generation: expect.any(Number) }),
             'http://portal.example/radio_2.mpg'
         );
     });

@@ -105,6 +105,21 @@ describe('ElectronStreamHeadersService', () => {
         expect(releaseStreamHeaders).toHaveBeenCalled();
     });
 
+    it('prevents stale player surfaces from clearing a same-URL successor', async () => {
+        const previousOwner = {};
+        const currentOwner = {};
+        await service.apply(PLAYBACK, previousOwner);
+        await service.apply(PLAYBACK, currentOwner);
+        releaseStreamHeaders.mockClear();
+
+        service.clear(A, previousOwner);
+        await flush();
+        expect(releaseStreamHeaders).not.toHaveBeenCalled();
+        service.clear(A, currentOwner);
+        await flush();
+        expect(releaseStreamHeaders).toHaveBeenCalledTimes(1);
+    });
+
     it('releases only its active URL and fences late setup', async () => {
         await service.apply(PLAYBACK);
         service.clear(B);
