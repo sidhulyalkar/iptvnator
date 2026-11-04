@@ -1,6 +1,6 @@
 import {
     ScopedStreamHeaderLeaseController,
-    ScopedHeaderConfiguration,
+    type ScopedHeaderConfiguration,
 } from './scoped-stream-header-lease';
 
 describe('main process scoped stream header leases', () => {
