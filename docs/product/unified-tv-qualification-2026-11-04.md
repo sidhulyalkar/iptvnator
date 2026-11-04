@@ -73,6 +73,24 @@ should intentionally include delayed, failed and credential-free fixture URLs;
 never paste provider secrets into a bug report. Browser PWA playback and
 Electron playback exercise different capabilities, so qualify both.
 
+## Verified isolated state-machine evidence
+
+Recorded 2026-11-04: the Git blob SHA of
+`apps/electron-backend/src/app/services/scoped-stream-header-lease.ts`
+was `a5b9e5674e55ddbff91ac7b3a5fe9aa45cc98519`.
+A clean TypeScript compile of that exact source using installed Node 22 and
+`tsc --strict --target ES2022 --module commonjs --lib es2022,dom` passed.
+An isolated Node test harness against the compiled controller passed 11/11
+assertions, including 200 deterministic reordered-switch simulations, stale
+release rejection, renderer crash/reload, and the irreversible legacy IPC
+fallback guard. This harness is not the repository's Jest, Chromium, or
+packaged Electron suite, and does not verify real playback.
+
+The GitHub PR had **no recorded workflow runs** on its latest head at the
+time of this evidence entry. Do not call the branch validated until the
+repository's own Nx typecheck, lint, unit tests and E2E are successful on the
+exact target commit. The runner/environment distinction is intentional.
+
 ## GitHub Actions: manual run if automatic checks do not appear
 
 Existing workflow files already have `workflow_dispatch`. In GitHub Actions,
