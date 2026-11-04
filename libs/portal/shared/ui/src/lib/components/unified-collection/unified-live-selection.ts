@@ -79,6 +79,9 @@ export function createUnifiedLiveSelection(options: {
 
     /** Stream URL of the radio playback whose header override this configured. */
     let radioHeaderScopeUrl: string | null = null;
+    // Distinguish this collection tab from other tabs that may play the same
+    // stream URL. The application-wide service alone is not an owner token.
+    const radioHeaderOwner = {};
     // The mounted stream keeps its guide while a replacement resolves or fails.
     // Pending row highlights use the separate playback selection generation.
     let guideOwner: symbol | null = null;
@@ -97,7 +100,7 @@ export function createUnifiedLiveSelection(options: {
     } | null = null;
 
     const releaseRadioHeaders = (): void => {
-        streamHeaders.clear(radioHeaderScopeUrl);
+        streamHeaders.clear(radioHeaderScopeUrl, radioHeaderOwner);
         radioHeaderScopeUrl = null;
     };
 
@@ -228,7 +231,7 @@ export function createUnifiedLiveSelection(options: {
                 // configured here BEFORE the audio element gets the URL.
                 // Ownership is claimed synchronously so a close/destroy
                 // during the pending IPC can still clear the credentials.
-                const headerSync = streamHeaders.apply(detail.playback);
+                const headerSync = streamHeaders.apply(detail.playback, radioHeaderOwner);
                 radioHeaderScopeUrl = detail.playback.streamUrl;
                 const stillCurrent = headerSync ? await headerSync : true;
                 if (
@@ -319,7 +322,7 @@ export function createUnifiedLiveSelection(options: {
             // Invalidate a playback continuation still awaiting its header
             // IPC and drop any radio credentials owned by this tab.
             options.generation.next();
-            streamHeaders.clear(radioHeaderScopeUrl);
+            releaseRadioHeaders();
         },
     };
 }
