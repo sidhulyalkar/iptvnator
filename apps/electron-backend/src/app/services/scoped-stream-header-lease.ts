@@ -44,6 +44,22 @@ export class ScopedStreamHeaderLeaseController {
         return this.ownerSenderId !== null;
     }
 
+    /**
+     * Retire secrets when the owning renderer exits or crashes.
+     * An older renderer's destroy event cannot retire a replacement epoch.
+     */
+    retire(senderId: number, epoch: number): boolean {
+        if (senderId !== this.ownerSenderId || epoch !== this.epoch) {
+            return false;
+        }
+        this.ownerSenderId = null;
+        this.activeScopeUrl = null;
+        this.latestGeneration = 0;
+        this.epoch += 1;
+        this.clearScoped();
+        return true;
+    }
+
     private accepts(senderId: number, lease: ScopedHeaderLease): boolean {
         return (
             senderId === this.ownerSenderId &&
@@ -90,11 +106,16 @@ export class ScopedStreamHeaderLeaseController {
         lease: ScopedHeaderLease,
         scopeUrl: string
     ): boolean {
-        if (!this.accepts(senderId, lease)) return false;
-        // A clear also fences an apply which has not reached the main process
-        // yet. Never clear an unrelated newer scope.
+        if (!this.accepts(senderId, lease) || !scopeUrl) return false;
+        // A release may fence a pending setup while no scope is installed.
+        // Once another stream owns the slot, a mismatched URL must never
+        // acknowledge the clear or supersede the newer generation.
+        if (this.activeScopeUrl !== null &&
+            this.activeScopeUrl !== scopeUrl) {
+            return false;
+        }
         this.latestGeneration = lease.generation;
-        if (scopeUrl && scopeUrl === this.activeScopeUrl) {
+        if (this.activeScopeUrl === scopeUrl) {
             this.activeScopeUrl = null;
             this.clearScoped();
         }
