@@ -223,7 +223,8 @@ export function configureRequestHeaderOverride(
         if (isScopedOverride) {
             clearScopedRequestHeaderOverride();
         } else {
-            clearRequestHeaderOverride();
+            // Clearing playlist defaults must not destroy a newer stream lease.
+            activeHeaderOverride = null;
         }
         return;
     }

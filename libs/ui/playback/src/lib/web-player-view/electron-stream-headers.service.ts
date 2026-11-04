@@ -5,88 +5,95 @@ function getHeaderValue(
     headers: ResolvedPortalPlayback['headers'] | undefined,
     name: string
 ): string | undefined {
-    if (!headers) {
-        return undefined;
-    }
-
+    if (!headers) return undefined;
     const matchingKey = Object.keys(headers).find(
         (key) => key.toLowerCase() === name.toLowerCase()
     );
     return matchingKey ? headers[matchingKey] : undefined;
 }
 
-/**
- * Single owner of the scoped Electron request-header override for built-in
- * playback. There is exactly one scoped override slot in the main process, so
- * every surface that plays a stream inline goes through this service:
- * `WebPlayerViewComponent` for the web video players, plus the two surfaces
- * that render `AudioPlayerComponent` for radio and therefore never mount a
- * `WebPlayerViewComponent` at all — the Stalker live layout, and the unified
- * live tab behind the Favorites / Recently Viewed collection routes.
- *
- * `apply()` extracts the full header set from the resolved playback —
- * including the portal Cookie/Authorization that auth-gated streams require —
- * and hands it to the main process scoped to the stream's URL. A playback
- * without custom headers deliberately clears the previous scoped override so
- * stale headers never leak onto the next stream. `clear()` releases the slot
- * only while the caller's stream still owns it, so a consumer being destroyed
- * cannot wipe the override a newer consumer just configured.
- */
-/** IPC registration must settle independently of the media/network timeout. */
+/** IPC setup is independent of media/network/first-frame deadlines. */
 export const ELECTRON_STREAM_HEADER_SETUP_TIMEOUT_MS = 15_000;
 
+/**
+ * Single renderer owner for all built-in video and audio header handoffs.
+ * Main owns the authoritative epoch/generation, not this renderer's timeout.
+ * A cancelled or timed-out request is fenced by a newer release generation.
+ */
 @Injectable({ providedIn: 'root' })
 export class ElectronStreamHeadersService {
-    /** Guards against a superseded apply resolving its header IPC late. */
     private syncSequence = 0;
-    /** Stream URL the currently configured override belongs to. */
     private currentScopeUrl: string | null = null;
-    /** Unblocks an older pending consumer immediately on source replacement. */
     private cancelPendingApply: (() => void) | null = null;
+    private sessionEpoch: Promise<number> | null = null;
+
+    private epoch(): Promise<number> {
+        if (!this.sessionEpoch) {
+            // This service is only called when Electron's lease bridge exists.
+            const promise = Promise.resolve(
+                window.electron!.beginStreamHeaderSession()
+            ).then(
+                (value) => Number.isSafeInteger(value) && value > 0 ? value : 0,
+                () => 0
+            );
+            this.sessionEpoch = promise;
+        }
+        return this.sessionEpoch;
+    }
+
+    private releaseActive(scopeUrl: string): void {
+        if (this.currentScopeUrl !== scopeUrl) return;
+        const generation = ++this.syncSequence;
+        this.currentScopeUrl = null;
+        const bridge = window.electron;
+        const epoch = this.sessionEpoch;
+        if (!bridge || !epoch) return;
+        void epoch.then((value) => {
+            if (value <= 0) return false;
+            return bridge.releaseStreamHeaders(
+                { epoch: value, generation }, scopeUrl
+            );
+        }).catch(() => undefined);
+    }
 
     /**
-     * Configures the scoped override for this playback. Resolves `true` when
-     * this apply is still the newest one at the time the main process
-     * acknowledged it — callers must only hand the source to a player on
-     * `true`, so the first media request already carries the headers. Returns
-     * null when there is no Electron bridge (PWA), where sources apply
-     * synchronously and no override exists.
+     * Returns null only in a PWA. A partially upgraded Electron bridge fails
+     * closed (false), never silently starts an authenticated media request.
      */
     apply(playback: ResolvedPortalPlayback): Promise<boolean> | null {
-        // A hanging IPC for channel A must not retain an awaiting audio/video
-        // caller after channel B is selected, even when A never settles.
         this.cancelPendingApply?.();
         this.cancelPendingApply = null;
-        // Feature-detect the actual method, not just the Electron bridge.
-        if (typeof window.electron?.setUserAgent !== 'function') {
-            return null;
-        }
+
+        const bridge = window.electron;
+        if (!bridge) return null;
+        if (
+            typeof bridge.beginStreamHeaderSession !== 'function' ||
+            typeof bridge.releaseStreamHeaders !== 'function' ||
+            typeof bridge.setUserAgent !== 'function'
+        ) return Promise.resolve(false);
 
         const sequence = ++this.syncSequence;
-        const userAgent =
-            playback.userAgent ??
+        const userAgent = playback.userAgent ??
             getHeaderValue(playback.headers, 'User-Agent');
-        const referer =
-            playback.referer ?? getHeaderValue(playback.headers, 'Referer');
+        const referer = playback.referer ??
+            getHeaderValue(playback.headers, 'Referer');
         const cookie = getHeaderValue(playback.headers, 'Cookie');
         const authorization = getHeaderValue(playback.headers, 'Authorization');
-
         this.currentScopeUrl = playback.streamUrl;
-        // Do not log raw IPC exceptions: they can contain portal credentials.
+
         let ipc: Promise<boolean>;
         try {
-            ipc = window.electron.setUserAgent(
-                userAgent,
-                referer,
-                playback.streamUrl,
-                cookie || authorization
-                    ? { authorization, cookie }
-                    : undefined
-            );
+            ipc = this.epoch().then((epoch) => {
+                if (epoch <= 0) return false;
+                return bridge.setUserAgent(
+                    userAgent, referer, playback.streamUrl,
+                    cookie || authorization ? { authorization, cookie } : undefined,
+                    { epoch, generation: sequence }
+                );
+            });
         } catch {
-            console.warn(
-                '[ElectronStreamHeaders] Request-header setup failed'
-            );
+            console.warn('[ElectronStreamHeaders] Request-header setup failed');
+            this.releaseActive(playback.streamUrl);
             return Promise.resolve(false);
         }
 
@@ -99,49 +106,32 @@ export class ElectronStreamHeadersService {
                 if (this.cancelPendingApply === cancel) {
                     this.cancelPendingApply = null;
                 }
-                if (failed && sequence === this.syncSequence) {
-                    console.warn(
-                        '[ElectronStreamHeaders] Request-header setup failed'
-                    );
+                const current = sequence === this.syncSequence;
+                if (failed && current) {
+                    // Never print an IPC exception: it may contain credentials.
+                    console.warn('[ElectronStreamHeaders] Request-header setup failed');
                 }
-                resolve(succeeded && sequence === this.syncSequence);
+                if (!succeeded && current) this.releaseActive(playback.streamUrl);
+                resolve(succeeded && current);
             };
             const cancel = (): void => settle(false);
-            // This is only the IPC handoff deadline, not media readiness.
-            // A late fulfillment must never install a player from this result.
             const deadline = setTimeout(
                 () => settle(false, true),
                 ELECTRON_STREAM_HEADER_SETUP_TIMEOUT_MS
             );
             this.cancelPendingApply = cancel;
-            void Promise.resolve(ipc).then(
-                (acknowledged) =>
-                    settle(acknowledged === true, acknowledged !== true),
+            void ipc.then(
+                (acknowledged) => settle(acknowledged === true, acknowledged !== true),
                 () => settle(false, true)
             );
         });
     }
 
-    /**
-     * Clears the scoped override — portal credentials must not outlive the
-     * playback session that needed them. No-ops when another stream has taken
-     * ownership of the slot since, and always in the PWA.
-     */
+    /** A destroyed/obsolete surface never clears a different active URL. */
     clear(streamUrl: string | null): void {
-        if (
-            typeof window.electron?.setUserAgent !== 'function' ||
-            streamUrl === null ||
-            this.currentScopeUrl !== streamUrl
-        ) {
-            return;
-        }
-
+        if (!streamUrl || this.currentScopeUrl !== streamUrl) return;
         this.cancelPendingApply?.();
         this.cancelPendingApply = null;
-        this.syncSequence += 1;
-        this.currentScopeUrl = null;
-        void window.electron
-            .setUserAgent(undefined, undefined, streamUrl)
-            .catch(() => undefined);
+        this.releaseActive(streamUrl);
     }
 }

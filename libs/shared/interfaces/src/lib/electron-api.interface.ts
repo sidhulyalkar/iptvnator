@@ -872,11 +872,18 @@ export interface ElectronBridgeApi {
         filePath: string,
         content: string
     ) => Promise<ElectronBridgeResult>;
+    /** Begin a new authoritative renderer playback-header epoch. */
+    beginStreamHeaderSession: () => Promise<number>;
     setUserAgent: (
         userAgent?: string | null,
         referer?: string | null,
         scopeUrl?: string | null,
-        credentials?: ElectronBridgeStreamCredentials | null
+        credentials?: ElectronBridgeStreamCredentials | null,
+        lease?: { epoch: number; generation: number }
+    ) => Promise<boolean>;
+    releaseStreamHeaders: (
+        lease: { epoch: number; generation: number },
+        scopeUrl: string
     ) => Promise<boolean>;
     openInMpv: (
         url: string,

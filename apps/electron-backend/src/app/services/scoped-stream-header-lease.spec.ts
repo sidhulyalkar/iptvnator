@@ -43,6 +43,13 @@ describe('main process scoped stream header leases', () => {
         expect(controller.apply(8, { epoch, generation: 1 }, request('same'))).toBe(false);
     });
 
+    it('fences an in-flight setup cancelled before arrival', () => {
+        const epoch = controller.begin(6);
+        expect(controller.release(6, { epoch, generation: 2 }, request('A').scopeUrl)).toBe(true);
+        expect(controller.apply(6, { epoch, generation: 1 }, request('A'))).toBe(false);
+        expect(applied).toHaveLength(0);
+    });
+
     it('retires a previous renderer epoch on reload', () => {
         const prior = controller.begin(12);
         controller.apply(12, { epoch: prior, generation: 1 }, request('old'));

@@ -95,14 +95,14 @@ export class ScopedStreamHeaderLeaseController {
         lease: ScopedHeaderLease,
         scopeUrl: string
     ): boolean {
-        if (
-            !this.accepts(senderId, lease) ||
-            !scopeUrl ||
-            scopeUrl !== this.activeScopeUrl
-        ) return false;
+        if (!this.accepts(senderId, lease)) return false;
+        // A clear also fences an apply which has not reached the main process
+        // yet. Never clear an unrelated newer scope.
         this.latestGeneration = lease.generation;
-        this.activeScopeUrl = null;
-        this.clearScoped();
+        if (scopeUrl && scopeUrl === this.activeScopeUrl) {
+            this.activeScopeUrl = null;
+            this.clearScoped();
+        }
         return true;
     }
 }

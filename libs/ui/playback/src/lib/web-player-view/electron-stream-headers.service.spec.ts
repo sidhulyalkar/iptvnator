@@ -4,244 +4,154 @@ import {
     ElectronStreamHeadersService,
 } from './electron-stream-headers.service';
 
-const STREAM_URL = 'http://portal.example:8080/live/ch1.ts';
-const GATED_PLAYBACK = {
-    streamUrl: STREAM_URL,
-    title: 'Gated Channel',
+const A = 'https://portal.example/live/A.m3u8';
+const B = 'https://portal.example/live/B.m3u8';
+const C = 'https://portal.example/live/C.m3u8';
+const PLAYBACK = {
+    streamUrl: A,
+    title: 'Channel A',
     headers: {
         'User-Agent': 'MAG250',
-        Referer: 'http://portal.example',
-        Cookie: 'mac=00%3A1A%3A79%3A00%3A00%3A01; stb_lang=en_US',
-        Authorization: 'Bearer TOKEN123',
+        Referer: 'https://portal.example',
+        Cookie: 'mac=private',
+        Authorization: 'Bearer SECRET',
     },
 };
 
 describe('ElectronStreamHeadersService', () => {
     let service: ElectronStreamHeadersService;
+    let beginStreamHeaderSession: jest.Mock;
     let setUserAgent: jest.Mock;
+    let releaseStreamHeaders: jest.Mock;
+    const flush = async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+    };
 
     beforeEach(() => {
+        TestBed.configureTestingModule({});
+        beginStreamHeaderSession = jest.fn().mockResolvedValue(9);
         setUserAgent = jest.fn().mockResolvedValue(true);
+        releaseStreamHeaders = jest.fn().mockResolvedValue(true);
         (window as unknown as { electron?: unknown }).electron = {
-            setUserAgent,
+            beginStreamHeaderSession, setUserAgent, releaseStreamHeaders,
         };
         service = TestBed.inject(ElectronStreamHeadersService);
     });
 
     afterEach(() => {
         delete (window as unknown as { electron?: unknown }).electron;
+        jest.useRealTimers();
+        jest.restoreAllMocks();
     });
 
-    it('returns null without an Electron bridge (PWA)', () => {
+    it('uses the main-process epoch and sends credentials with a generation', async () => {
+        await expect(service.apply(PLAYBACK)).resolves.toBe(true);
+        expect(beginStreamHeaderSession).toHaveBeenCalledTimes(1);
+        expect(setUserAgent).toHaveBeenCalledWith(
+            'MAG250', 'https://portal.example', A,
+            { cookie: 'mac=private', authorization: 'Bearer SECRET' },
+            { epoch: 9, generation: 1 }
+        );
+    });
+
+    it('does not require an Electron bridge in the PWA', () => {
         delete (window as unknown as { electron?: unknown }).electron;
+        expect(service.apply(PLAYBACK)).toBeNull();
+    });
 
-        expect(service.apply(GATED_PLAYBACK)).toBeNull();
+    it('fails closed for an Electron bridge without the lease API', async () => {
+        (window as unknown as { electron?: unknown }).electron = { setUserAgent };
+        await expect(service.apply(PLAYBACK)).resolves.toBe(false);
         expect(setUserAgent).not.toHaveBeenCalled();
     });
 
-    it('extracts the full header set and scopes it to the stream URL', async () => {
-        await expect(service.apply(GATED_PLAYBACK)).resolves.toBe(true);
-
-        expect(setUserAgent).toHaveBeenCalledWith(
-            'MAG250',
-            'http://portal.example',
-            STREAM_URL,
-            {
-                authorization: 'Bearer TOKEN123',
-                cookie: 'mac=00%3A1A%3A79%3A00%3A00%3A01; stb_lang=en_US',
-            }
-        );
-    });
-
-    it('prefers explicit userAgent/referer fields over the headers map', async () => {
+    it('honors explicit playback header fields', async () => {
         await service.apply({
-            ...GATED_PLAYBACK,
-            userAgent: 'ExplicitAgent/1.0',
-            referer: 'http://explicit.example',
+            ...PLAYBACK, userAgent: 'Explicit/1', referer: 'https://ref.example',
         });
-
         expect(setUserAgent).toHaveBeenCalledWith(
-            'ExplicitAgent/1.0',
-            'http://explicit.example',
-            STREAM_URL,
-            expect.anything()
+            'Explicit/1', 'https://ref.example', A, expect.anything(),
+            { epoch: 9, generation: 1 }
         );
     });
 
-    it('omits the credentials object when the playback carries none', async () => {
-        await service.apply({
-            streamUrl: 'https://example.com/live/plain.m3u8',
-            title: 'Plain Channel',
-            userAgent: 'PlainAgent/1.0',
-        });
-
+    it('clears previous scoped credentials for a source without headers', async () => {
+        await service.apply({ ...PLAYBACK, headers: undefined, userAgent: undefined });
         expect(setUserAgent).toHaveBeenCalledWith(
-            'PlainAgent/1.0',
-            undefined,
-            'https://example.com/live/plain.m3u8',
-            undefined
+            undefined, undefined, A, undefined,
+            { epoch: 9, generation: 1 }
         );
     });
 
-    it('reports a superseded apply as not current', async () => {
-        const resolvers: Array<() => void> = [];
+    it('fences A and B when C is selected during delayed IPC', async () => {
+        const resolvers: Array<(ok: boolean) => void> = [];
         setUserAgent.mockImplementation(
-            () =>
-                new Promise<boolean>((resolve) =>
-                    resolvers.push(() => resolve(true))
-                )
+            () => new Promise<boolean>((resolve) => resolvers.push(resolve))
         );
-
-        const first = service.apply(GATED_PLAYBACK);
-        const second = service.apply({
-            ...GATED_PLAYBACK,
-            streamUrl: 'http://portal.example:8080/live/ch2.ts',
-        });
-
-        // The old waiter settles immediately, even if its IPC hangs.
-        await expect(first).resolves.toBe(false);
-        resolvers[1]();
-        await expect(second).resolves.toBe(true);
-        // A late result cannot revive the superseded request.
-        resolvers[0]();
+        const a = service.apply(PLAYBACK);
+        const b = service.apply({ ...PLAYBACK, streamUrl: B });
+        const c = service.apply({ ...PLAYBACK, streamUrl: C });
+        await flush();
+        expect(resolvers).toHaveLength(3);
+        await expect(a).resolves.toBe(false);
+        await expect(b).resolves.toBe(false);
+        resolvers[2](true);
+        await expect(c).resolves.toBe(true);
+        resolvers[0](true);
+        resolvers[1](true);
+        await flush();
+        expect(releaseStreamHeaders).toHaveBeenCalled();
     });
 
-    it('clears the override only while the caller still owns the slot', async () => {
-        await service.apply(GATED_PLAYBACK);
-        setUserAgent.mockClear();
-
-        // A stale consumer (e.g. a destroyed component) must not wipe the
-        // override a newer playback configured.
-        service.clear('http://portal.example:8080/other-stream.ts');
-        expect(setUserAgent).not.toHaveBeenCalled();
-
-        service.clear(STREAM_URL);
-        expect(setUserAgent).toHaveBeenCalledWith(
-            undefined,
-            undefined,
-            STREAM_URL
+    it('releases only its active URL and fences late setup', async () => {
+        await service.apply(PLAYBACK);
+        service.clear(B);
+        expect(releaseStreamHeaders).not.toHaveBeenCalled();
+        service.clear(A);
+        await flush();
+        expect(releaseStreamHeaders).toHaveBeenCalledWith(
+            { epoch: 9, generation: 2 }, A
         );
+        service.clear(A);
+        expect(releaseStreamHeaders).toHaveBeenCalledTimes(1);
     });
 
-    it('does not clear twice for the same stream', async () => {
-        await service.apply(GATED_PLAYBACK);
-        service.clear(STREAM_URL);
-        setUserAgent.mockClear();
-
-        service.clear(STREAM_URL);
-        expect(setUserAgent).not.toHaveBeenCalled();
-    });
-
-    it('resolves instead of throwing when the bridge rejects', async () => {
-        const warn = jest.spyOn(console, 'warn').mockImplementation(() => {
-            /* silence */
-        });
-        setUserAgent.mockRejectedValue(new Error('ipc down'));
-
-        await expect(service.apply(GATED_PLAYBACK)).resolves.toBe(false);
+    it('returns false and revokes when IPC rejects without logging a secret', async () => {
+        const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+        setUserAgent.mockRejectedValue(new Error('cookie=private'));
+        await expect(service.apply(PLAYBACK)).resolves.toBe(false);
+        await flush();
+        expect(releaseStreamHeaders).toHaveBeenCalled();
         expect(warn).toHaveBeenCalledWith(
             '[ElectronStreamHeaders] Request-header setup failed'
         );
-        warn.mockRestore();
-    });
-    it('does not expose a synchronous IPC exception or treat it as success', async () => {
-        const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
-        setUserAgent.mockImplementation(() => {
-            throw new Error('private cookie=should-not-be-logged');
-        });
-        await expect(service.apply(GATED_PLAYBACK)).resolves.toBe(false);
-        expect(warn).toHaveBeenCalledWith(
-            '[ElectronStreamHeaders] Request-header setup failed'
-        );
-        warn.mockRestore();
     });
 
-    it('bounds a hung Electron header IPC and never reports a late success', async () => {
+    it('never reports a late success after its IPC deadline', async () => {
         jest.useFakeTimers();
         const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
-        try {
-            let finish: (value: boolean) => void = () => undefined;
-            setUserAgent.mockImplementation(
-                () =>
-                    new Promise<boolean>((resolve) => {
-                        finish = resolve;
-                    })
-            );
-
-            const pending = service.apply(GATED_PLAYBACK);
-            jest.advanceTimersByTime(ELECTRON_STREAM_HEADER_SETUP_TIMEOUT_MS - 1);
-            expect(warn).not.toHaveBeenCalled();
-            jest.advanceTimersByTime(1);
-            await expect(pending).resolves.toBe(false);
-            expect(warn).toHaveBeenCalledWith(
-                '[ElectronStreamHeaders] Request-header setup failed'
-            );
-
-            finish(true);
-            await Promise.resolve();
-            // The result stays failed after the late IPC response.
-            await expect(pending).resolves.toBe(false);
-            expect(warn).toHaveBeenCalledTimes(1);
-        } finally {
-            warn.mockRestore();
-            jest.useRealTimers();
-        }
-    });
-
-    it('unblocks the superseded waiter before its deadline', async () => {
-        jest.useFakeTimers();
-        try {
-            const resolvers: Array<() => void> = [];
-            setUserAgent.mockImplementation(
-                () =>
-                    new Promise<boolean>((resolve) =>
-                        resolvers.push(() => resolve(true))
-                    )
-            );
-
-            const first = service.apply(GATED_PLAYBACK);
-            const second = service.apply({
-                ...GATED_PLAYBACK,
-                streamUrl: 'http://portal.example:8080/live/ch2.ts',
-            });
-            await expect(first).resolves.toBe(false);
-            expect(resolvers).toHaveLength(2);
-            resolvers[1]();
-            await expect(second).resolves.toBe(true);
-            jest.advanceTimersByTime(ELECTRON_STREAM_HEADER_SETUP_TIMEOUT_MS);
-            resolvers[0]();
-            await Promise.resolve();
-            await expect(first).resolves.toBe(false);
-        } finally {
-            jest.useRealTimers();
-        }
-    });
-
-    it('cancels an outstanding handoff when its scoped header lease is cleared', async () => {
-        setUserAgent.mockImplementationOnce(
-            () => new Promise<boolean>(() => undefined)
+        let finish: (value: boolean) => void = () => undefined;
+        setUserAgent.mockImplementation(
+            () => new Promise<boolean>((resolve) => { finish = resolve; })
         );
-        const pending = service.apply(GATED_PLAYBACK);
-        service.clear(STREAM_URL);
+        const pending = service.apply(PLAYBACK);
+        await flush();
+        jest.advanceTimersByTime(ELECTRON_STREAM_HEADER_SETUP_TIMEOUT_MS);
         await expect(pending).resolves.toBe(false);
-        expect(setUserAgent).toHaveBeenLastCalledWith(
-            undefined,
-            undefined,
-            STREAM_URL
-        );
+        await flush();
+        expect(releaseStreamHeaders).toHaveBeenCalled();
+        finish(true);
+        await flush();
+        await expect(pending).resolves.toBe(false);
+        expect(warn).toHaveBeenCalledTimes(1);
     });
 
-    it('requires positive IPC acknowledgment before the player can mount', async () => {
-        const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
-        try {
-            setUserAgent.mockResolvedValue(false);
-            await expect(service.apply(GATED_PLAYBACK)).resolves.toBe(false);
-            expect(warn).toHaveBeenCalledWith(
-                '[ElectronStreamHeaders] Request-header setup failed'
-            );
-        } finally {
-            warn.mockRestore();
-        }
+    it('does not start media after an unsuccessful main-process acknowledgment', async () => {
+        setUserAgent.mockResolvedValue(false);
+        await expect(service.apply(PLAYBACK)).resolves.toBe(false);
+        await flush();
+        expect(releaseStreamHeaders).toHaveBeenCalled();
     });
-
 });
