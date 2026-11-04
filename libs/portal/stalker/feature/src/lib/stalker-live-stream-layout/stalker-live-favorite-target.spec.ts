@@ -97,5 +97,18 @@ describe('Stalker live favorite identity', () => {
         expect(
             hasStalkerLiveFavorite([{ stream_id: '42', category_id: 'itv' }], '42')
         ).toBe(true);
+        expect(
+            hasStalkerLiveFavorite([{ id: '42', category_id: '17' }], '42')
+        ).toBe(false);
+        expect(
+            hasStalkerLiveFavorite([{ id: '42' }], '42')
+        ).toBe(false);
+        expect(
+            hasStalkerLiveFavorite([
+                { id: '42', category_id: 'vod' },
+                { id: '42', category_id: 'radio' },
+                { id: '42', category_id: '17' },
+            ], '42')
+        ).toBe(false);
     });
 });
