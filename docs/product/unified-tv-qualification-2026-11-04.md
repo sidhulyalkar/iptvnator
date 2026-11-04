@@ -86,6 +86,14 @@ release rejection, renderer crash/reload, and the irreversible legacy IPC
 fallback guard. This harness is not the repository's Jest, Chromium, or
 packaged Electron suite, and does not verify real playback.
 
+A second isolated check compiled the exact
+`libs/services/src/lib/stalker-favorite-scoped-remove.ts` Git blob
+`2aad991bad852cae8633f1536e5088213423ebd3` with a local
+`StalkerPortalItem` declaration stub, and passed **7/7 Node tests** for
+typed ITV/radio removal, VOD collisions, numeric legacy ambiguity,
+unique untyped removal, blank IDs, and immutability. This is not a
+repository persistence or UI/E2E test.
+
 The GitHub PR had **no recorded workflow runs** on its latest head at the
 time of this evidence entry. Do not call the branch validated until the
 repository's own Nx typecheck, lint, unit tests and E2E are successful on the
