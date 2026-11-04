@@ -86,6 +86,10 @@ describe('stream-header IPC lifecycle', () => {
         expect(mockClearScoped).toHaveBeenCalledTimes(before + 1);
         expect(invoke('set-user-agent', owner, 'Late', null, STREAM_A,
             null, { epoch, generation: 2 })).toBe(false);
+        // A late pre-lease IPC must not be able to regain authority after
+        // the original owning renderer has crashed.
+        expect(invoke('set-user-agent', owner, 'Legacy', null, STREAM_A,
+            { cookie: 'old' })).toBe(false);
     });
 
     it('ignores a destruction callback from a replaced renderer session', () => {
