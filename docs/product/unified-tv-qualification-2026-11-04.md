@@ -113,6 +113,24 @@ Do not interpret an empty check list as a pass. GitHub workflow runs initiated
 from an unrelated branch or parent commit do not qualify this head. Record
 artifact SHA and branch SHA before installing a test package.
 
+## Hosted browser preview (verified PWA build)
+
+An isolated Vercel project `iptvnator-unified-tv-preview` has successfully
+built this qualification branch as an Angular PWA with Node 24 and pnpm 10.33.0:
+
+- [Working build (commit 1ca5509)](https://iptvnator-unified-tv-preview-67wgzzln5.vercel.app)
+- [Build details](https://vercel.com/sidsoccer21-6129s-projects/iptvnator-unified-tv-preview/DakHp9vDuDWMLPqNEhQ8xLuqywu1)
+- The project uses Vercel Authentication. It has no real provider credentials.
+- Browser preview covers layout, navigation and PWA behavior. The Electron
+  IPC protocol, native players, and local provider proxy are **not** deployed
+  by this static site. A hosted view is not equivalent to a real provider or
+  packaged-app acceptance test.
+
+A follow-up Vercel build is configured to execute `typecheck:ci`,
+`typecheck:spec`, and the six affected-unit project targets before publishing
+a PWA. This is a supplementary gate, not a replacement for official
+cross-platform GitHub Actions and Electron E2E.
+
 ## Manual acceptance on an Electron build
 
 Use three independently controlled, authorized synthetic IPTV sources with
