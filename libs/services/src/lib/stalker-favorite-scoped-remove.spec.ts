@@ -49,6 +49,36 @@ describe('filterPortalFavoritesForRemoval', () => {
         expect(result.retained).toEqual(records.slice(0, 4));
     });
 
+    it('does not remove a second ITV favorite with a colliding canonical ID', () => {
+        const collision = [
+            { id: 'row-A', stream_id: '42', category_id: 'itv' },
+            { id: 'row-B', stream_id: '42', category_id: 'itv' },
+        ];
+        const result = filterPortalFavoritesForRemoval(collision, '42', 'itv');
+        expect(result.removed).toBe(false);
+        expect(result.retained).toEqual(collision);
+    });
+
+    it('prefers canonical stream_id over an alternate catalog row ID', () => {
+        const item = { id: '42', stream_id: '99', category_id: 'itv' };
+        const wrong = filterPortalFavoritesForRemoval([item], '42', 'itv');
+        expect(wrong.removed).toBe(false);
+        expect(wrong.retained).toEqual([item]);
+        const correct = filterPortalFavoritesForRemoval([item], '99', 'itv');
+        expect(correct.removed).toBe(true);
+        expect(correct.retained).toEqual([]);
+    });
+
+    it('preserves a shared numeric ID in VOD while removing a unique live favorite', () => {
+        const collision = [
+            { id: '42', movie_id: '42', category_id: 'vod' },
+            { id: '42', stream_id: '42', category_id: 'itv' },
+        ];
+        const result = filterPortalFavoritesForRemoval(collision, '42', 'itv');
+        expect(result.removed).toBe(true);
+        expect(result.retained).toEqual([collision[0]]);
+    });
+
     it('does not mutate source arrays or remove favorites for a blank ID', () => {
         const result = filterPortalFavoritesForRemoval(records, '   ', 'itv');
         expect(result.retained).toEqual(records);
