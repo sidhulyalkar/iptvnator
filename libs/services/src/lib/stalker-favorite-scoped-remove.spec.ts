@@ -69,6 +69,13 @@ describe('filterPortalFavoritesForRemoval', () => {
         expect(correct.retained).toEqual([]);
     });
 
+    it('uses legacy id when stream_id exists but is blank', () => {
+        const item = { id: '42', stream_id: '   ', category_id: 'itv' };
+        const result = filterPortalFavoritesForRemoval([item], '42', 'itv');
+        expect(result.removed).toBe(true);
+        expect(result.retained).toEqual([]);
+    });
+
     it('preserves a shared numeric ID in VOD while removing a unique live favorite', () => {
         const collision = [
             { id: '42', movie_id: '42', category_id: 'vod' },
