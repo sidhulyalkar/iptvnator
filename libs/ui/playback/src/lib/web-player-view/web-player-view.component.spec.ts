@@ -1003,6 +1003,12 @@ describe('WebPlayerViewComponent', () => {
         });
 
         it('configures the full header set — incl. credentials — before handing the source to the player', async () => {
+            let acknowledge: (() => void) | undefined;
+            setUserAgent.mockImplementationOnce(() =>
+                new Promise<boolean>((resolve) => {
+                    acknowledge = () => resolve(true);
+                })
+            );
             fixture.componentRef.setInput('playback', GATED_PLAYBACK);
 
             fixture.detectChanges();
@@ -1023,6 +1029,7 @@ describe('WebPlayerViewComponent', () => {
             );
             expect(component.channel()).toBeUndefined();
 
+            acknowledge?.();
             await fixture.whenStable();
             fixture.detectChanges();
 
@@ -1059,6 +1066,8 @@ describe('WebPlayerViewComponent', () => {
 
             fixture.componentRef.setInput('playback', GATED_PLAYBACK);
             fixture.detectChanges();
+            await Promise.resolve();
+            await Promise.resolve();
             fixture.componentRef.setInput('playback', {
                 streamUrl: 'http://portal.example:8080/live/ch2.ts',
                 title: 'Next Channel',

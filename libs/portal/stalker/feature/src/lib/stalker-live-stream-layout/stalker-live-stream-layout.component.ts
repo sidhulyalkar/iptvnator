@@ -716,10 +716,10 @@ export class StalkerLiveStreamLayoutComponent
                             const type = String(favorite.category_id ?? '')
                                 .trim()
                                 .toLowerCase();
-                            const wrongType = radioMode
-                                ? ['vod', 'series', 'itv'].includes(type)
-                                : ['vod', 'series', 'radio'].includes(type);
-                            if (wrongType) continue;
+                            // A historical numeric category is not evidence
+                            // that this is an ITV or radio favorite. Never
+                            // render a false saved star on an ID collision.
+                            if (type !== (radioMode ? 'radio' : 'itv')) continue;
                             const id =
                                 normalizeStalkerEntityId(favorite.stream_id) ||
                                 normalizeStalkerEntityId(favorite.id);

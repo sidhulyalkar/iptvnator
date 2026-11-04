@@ -475,6 +475,19 @@ describe('StalkerLiveStreamLayoutComponent', () => {
         expect(stalkerStore.addToFavorites).toHaveBeenCalledTimes(2);
     });
 
+    it('does not infer a live favorite from a legacy numeric category ID', () => {
+        playlistService.getPortalFavorites.mockReturnValueOnce(
+            of([
+                { id: '10001', category_id: '17' },
+                { id: '10002', category_id: 'itv' },
+            ])
+        );
+        stalkerStore.selectedContentType.set('itv');
+        fixture.detectChanges();
+        expect(component.favorites.has('10001')).toBe(false);
+        expect(component.favorites.has('10002')).toBe(true);
+    });
+
     it('keeps radio favorite marks without importing ITV favorites', () => {
         playlistService.getPortalFavorites.mockReturnValueOnce(
             of([
