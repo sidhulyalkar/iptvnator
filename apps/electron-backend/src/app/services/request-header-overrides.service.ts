@@ -267,6 +267,6 @@ export function clearRequestHeaderOverride(): void {
     activeScopedHeaderOverride = null;
 }
 
-function clearScopedRequestHeaderOverride(): void {
+export function clearScopedRequestHeaderOverride(): void {
     activeScopedHeaderOverride = null;
 }

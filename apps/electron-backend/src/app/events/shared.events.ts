@@ -1,8 +1,13 @@
 import { ipcMain } from 'electron';
 import {
     configureRequestHeaderOverride,
+    clearScopedRequestHeaderOverride,
     type StreamCredentialHeaders,
 } from '../services/request-header-overrides.service';
+import {
+    ScopedStreamHeaderLeaseController,
+    type ScopedHeaderLease,
+} from '../services/scoped-stream-header-lease';
 
 export default class SharedEvents {
     static bootstrapSharedEvents(): Electron.IpcMain {
@@ -23,17 +28,37 @@ function sanitizeCredentials(value: unknown): StreamCredentialHeaders | null {
     };
 }
 
+const scopedHeaderLease = new ScopedStreamHeaderLeaseController(
+    ({ userAgent, referer, scopeUrl, credentials }) =>
+        configureRequestHeaderOverride(userAgent, referer, scopeUrl, credentials),
+    clearScopedRequestHeaderOverride
+);
+
+ipcMain.handle('begin-stream-header-session', (event) =>
+    scopedHeaderLease.begin(event.sender.id)
+);
+
 ipcMain.handle(
     'set-user-agent',
-    (_event, userAgent, referer, scopeUrl, credentials) => {
-        setUserAgent(
-            userAgent,
-            referer,
-            scopeUrl,
-            sanitizeCredentials(credentials)
-        );
+    (event, userAgent, referer, scopeUrl, credentials, lease?: ScopedHeaderLease) => {
+        if (lease !== undefined) {
+            return scopedHeaderLease.apply(event.sender.id, lease, {
+                userAgent, referer, scopeUrl,
+                credentials: sanitizeCredentials(credentials),
+            });
+        }
+        // Legacy unscoped playlist defaults remain supported. Scoped legacy
+        // calls cannot bypass the active generation gate after session start.
+        if (scopeUrl != null && scopedHeaderLease.hasSession()) return false;
+        setUserAgent(userAgent, referer, scopeUrl, sanitizeCredentials(credentials));
         return true;
     }
+);
+
+ipcMain.handle(
+    'release-stream-headers',
+    (event, lease: ScopedHeaderLease, scopeUrl: string) =>
+        scopedHeaderLease.release(event.sender.id, lease, scopeUrl)
 );
 
 /**
