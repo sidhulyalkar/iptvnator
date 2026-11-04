@@ -37,10 +37,16 @@ describe('filterPortalFavoritesForRemoval', () => {
         expect(result.retained).toEqual([{ id: '42', category_id: '17' }]);
     });
 
-    it('preserves the historic unscoped behavior for existing callers', () => {
+    it('refuses unscoped deletion when IDs collide across content types', () => {
         const result = filterPortalFavoritesForRemoval(records, '42');
+        expect(result.removed).toBe(false);
+        expect(result.retained).toEqual(records);
+    });
+
+    it('allows a uniquely identifiable legacy deletion', () => {
+        const result = filterPortalFavoritesForRemoval(records, '77');
         expect(result.removed).toBe(true);
-        expect(result.retained).toEqual([records[4]]);
+        expect(result.retained).toEqual(records.slice(0, 4));
     });
 
     it('does not mutate source arrays or remove favorites for a blank ID', () => {

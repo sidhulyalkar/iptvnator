@@ -46,6 +46,14 @@ describe('PlaylistsService scoped Stalker favorite removal', () => {
         expect(source.favorites).toHaveLength(4);
     });
 
+    it('rejects unscoped deletion when reused IDs collide across types', async () => {
+        const { service, persist } = setup();
+        await expect(
+            firstValueFrom(service.removeFromPortalFavorites('portal-1', '42'))
+        ).rejects.toThrow('STALKER_FAVORITE_SCOPE_UNVERIFIED');
+        expect(persist).not.toHaveBeenCalled();
+    });
+
     it('refuses to mutate a portal when the requested type is ambiguous', async () => {
         const { service, persist } = setup({
             ...source,

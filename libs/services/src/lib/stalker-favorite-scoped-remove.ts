@@ -9,6 +9,22 @@ export function filterPortalFavoritesForRemoval<T>(
     const expectedId = String(favoriteId).trim();
     if (!expectedId) return { retained: [...favorites], removed: false };
 
+    // Untyped legacy operations may delete only a single provable record.
+    // Reused numeric IDs across ITV, VOD, and radio must never fan out.
+    const matching = favorites.filter((entry) => {
+        if (!entry || typeof entry !== 'object') return false;
+        const favorite = entry as unknown as StalkerPortalItem;
+        return [
+            favorite.stream_id,
+            favorite.series_id,
+            favorite.movie_id,
+            favorite.id,
+        ].some((id) => id != null && String(id).trim() === expectedId);
+    });
+    if (!contentType && matching.length !== 1) {
+        return { retained: [...favorites], removed: false };
+    }
+
     let removed = false;
     const retained = favorites.filter((entry) => {
         if (!entry || typeof entry !== 'object') return true;
@@ -21,8 +37,8 @@ export function filterPortalFavoritesForRemoval<T>(
         ].some((id) => id != null && String(id).trim() === expectedId);
         if (!matches) return true;
 
-        // Omitted contentType intentionally preserves the legacy call path.
-        // New live-player calls require explicit portal-provided type evidence.
+        // Typed operations require actual category evidence. Numeric category
+        // IDs in historical records are ambiguous and remain untouched.
         if (
             contentType &&
             String(favorite.category_id ?? '').trim().toLowerCase() !==

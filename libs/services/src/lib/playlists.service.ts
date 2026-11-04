@@ -1182,9 +1182,10 @@ export class PlaylistsService {
                   )
                 : null;
 
-            // An untyped or legacy ambiguous record cannot authorize
-            // deletion of another kind of favorite with the same numeric ID.
-            if (contentType && !result?.removed) {
+            // Never persist an ambiguous or nonexistent destructive target.
+            // A legacy unscoped request is allowed only if exactly one record
+            // matches within the selected portal's current favorites.
+            if (!result?.removed) {
                 throw new Error('STALKER_FAVORITE_SCOPE_UNVERIFIED');
             }
             return this.persistPlaylistMutation({
