@@ -46,6 +46,47 @@ pnpm run perf:journeys
 
 Use `pnpm nx show projects` to verify project names before invoking them.
 
+## See the interface locally
+
+For a quick browser/UI inspection with the repository's synthetic Xtream
+backend, launch the existing demo (not an Electron security test):
+
+```bash
+pnpm run serve:marketing-demo:web
+```
+
+Open the URL Nx prints. The synthetic backend is useful for visual discovery,
+navigation, loading states and Favorites feedback. It is not evidence of
+Stalker/M3U credentials or desktop IPC safety.
+
+For a development Electron session, start the renderer and backend in
+separate terminals from a clean installed checkout:
+
+```bash
+pnpm run serve:frontend
+# separate terminal:
+pnpm run serve:backend
+```
+
+Use only sources you own or are authorized to access. The live-player tests
+should intentionally include delayed, failed and credential-free fixture URLs;
+never paste provider secrets into a bug report. Browser PWA playback and
+Electron playback exercise different capabilities, so qualify both.
+
+## GitHub Actions: manual run if automatic checks do not appear
+
+Existing workflow files already have `workflow_dispatch`. In GitHub Actions,
+choose the qualification branch in **Run workflow** for:
+
+- `CI` (lint, types, relevant units and release-note gate);
+- `Cross-Platform E2E Tests` (Chromium + Electron shards);
+- `Build and Make Electron App` (downloadable test packages where the build
+  succeeds; Windows MPV 404/macOS x64 DMG failures are known blockers).
+
+Do not interpret an empty check list as a pass. GitHub workflow runs initiated
+from an unrelated branch or parent commit do not qualify this head. Record
+artifact SHA and branch SHA before installing a test package.
+
 ## Manual acceptance on an Electron build
 
 Use three independently controlled, authorized synthetic IPTV sources with
