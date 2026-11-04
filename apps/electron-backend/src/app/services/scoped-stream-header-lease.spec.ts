@@ -106,6 +106,7 @@ describe('main process scoped stream header leases', () => {
 
         expect(controller.retire(22, epoch)).toBe(true);
         expect(controller.hasSession()).toBe(false);
+        expect(controller.hasActivatedLeaseProtocol()).toBe(true);
         expect(clears).toBe(before + 1);
         expect(controller.apply(22, { epoch, generation: 99 }, request('A'))).toBe(false);
         expect(controller.retire(22, epoch)).toBe(false);
