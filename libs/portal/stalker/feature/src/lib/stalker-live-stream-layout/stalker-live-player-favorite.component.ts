@@ -159,6 +159,11 @@ export class StalkerLivePlayerFavoriteComponent {
                     this.store.addToFavorites(
                         {
                             ...target.item,
+                            // Portal response types may contain null, but the
+                            // persisted favorite contract does not. Keep
+                            // provider playback flags without serializing
+                            // invalid nullable classification fields.
+                            is_series: target.item.is_series ?? undefined,
                             category_id: 'itv',
                             title: target.channelName,
                             cover: target.item.logo,
