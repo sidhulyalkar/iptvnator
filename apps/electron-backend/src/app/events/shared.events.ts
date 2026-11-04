@@ -34,9 +34,21 @@ const scopedHeaderLease = new ScopedStreamHeaderLeaseController(
     clearScopedRequestHeaderOverride
 );
 
-ipcMain.handle('begin-stream-header-session', (event) =>
-    scopedHeaderLease.begin(event.sender.id)
-);
+ipcMain.handle('begin-stream-header-session', (event) => {
+    const sender = event.sender;
+    if (sender.isDestroyed()) return 0;
+    const epoch = scopedHeaderLease.begin(sender.id);
+    if (epoch <= 0) return 0;
+
+    // A renderer crash or window destruction must revoke in-memory stream
+    // credentials even if the renderer never sends a release IPC. A later
+    // renderer session gets a new epoch; its lease cannot be cleared by these
+    // earlier callbacks.
+    const retire = () => { scopedHeaderLease.retire(sender.id, epoch); };
+    sender.once('render-process-gone', retire);
+    sender.once('destroyed', retire);
+    return epoch;
+});
 
 ipcMain.handle(
     'set-user-agent',
