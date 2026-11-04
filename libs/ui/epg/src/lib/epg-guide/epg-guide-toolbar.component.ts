@@ -115,7 +115,9 @@ export class EpgGuideToolbarComponent {
         );
     }
 
-    onSearchArrowDown(event: KeyboardEvent): void {
+    onSearchArrowDown(event: Event): void {
+        // Angular key-filter bindings type $event as Event. Only the
+        // Event interface is needed for this delegated keyboard action.
         if (!this.searchResultsAvailable()) return;
         event.preventDefault();
         event.stopPropagation();
