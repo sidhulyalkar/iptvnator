@@ -65,18 +65,13 @@ export class ScopedStreamHeaderLeaseController {
         request: ScopedHeaderConfiguration
     ): boolean {
         if (!this.accepts(senderId, lease)) return false;
-        // Only real HTTP(S) stream scopes may hold a lease.
-        try {
-            const url = new URL(request.scopeUrl);
-            if (!['http:', 'https:'].includes(url.protocol)) return false;
-        } catch {
-            return false;
-        }
+        // Even a newer but invalid stream retires the previous credentials.
         this.latestGeneration = lease.generation;
-        // Revoke old credentials before attempting a new configuration.
         this.activeScopeUrl = null;
         this.clearScoped();
         try {
+            const url = new URL(request.scopeUrl);
+            if (!['http:', 'https:'].includes(url.protocol)) return false;
             this.configure(request);
             this.activeScopeUrl = request.scopeUrl;
             return true;

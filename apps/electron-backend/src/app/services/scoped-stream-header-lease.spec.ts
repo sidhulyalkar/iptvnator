@@ -67,7 +67,20 @@ describe('main process scoped stream header leases', () => {
         expect(controller.apply(3, { epoch, generation: 1 }, {
             scopeUrl: 'file:///private/test', credentials: { cookie: 'secret' },
         })).toBe(false);
-        expect(controller.apply(3, { epoch, generation: 1 }, request('good'))).toBe(true);
+        expect(controller.apply(3, { epoch, generation: 1 }, request('good'))).toBe(false);
+        expect(controller.apply(3, { epoch, generation: 2 }, request('good'))).toBe(true);
+        expect(applied).toHaveLength(1);
+    });
+
+    it('invalid new scope retires the previous credentials', () => {
+        const epoch = controller.begin(4);
+        controller.apply(4, { epoch, generation: 1 }, request('A'));
+        const before = clears;
+        expect(controller.apply(4, { epoch, generation: 2 }, {
+            scopeUrl: 'file:///do-not-load', credentials: { cookie: 'private' },
+        })).toBe(false);
+        expect(clears).toBeGreaterThan(before);
+        expect(controller.release(4, { epoch, generation: 3 }, request('A').scopeUrl)).toBe(true);
         expect(applied).toHaveLength(1);
     });
 
@@ -78,6 +91,6 @@ describe('main process scoped stream header leases', () => {
         );
         const epoch = failing.begin(2);
         expect(failing.apply(2, { epoch, generation: 1 }, request('fail'))).toBe(false);
-        expect(clears).toBe(2);
+        expect(clears).toBe(3);
     });
 });

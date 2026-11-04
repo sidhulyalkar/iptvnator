@@ -129,6 +129,17 @@ describe('ElectronStreamHeadersService', () => {
         );
     });
 
+    it('reacquires a new header session after a failed begin', async () => {
+        beginStreamHeaderSession.mockResolvedValueOnce(0).mockResolvedValueOnce(10);
+        await expect(service.apply(PLAYBACK)).resolves.toBe(false);
+        await expect(service.apply(PLAYBACK)).resolves.toBe(true);
+        expect(beginStreamHeaderSession).toHaveBeenCalledTimes(2);
+        expect(setUserAgent).toHaveBeenCalledWith(
+            expect.anything(), expect.anything(), A,
+            expect.anything(), { epoch: 10, generation: 3 }
+        );
+    });
+
     it('never reports a late success after its IPC deadline', async () => {
         jest.useFakeTimers();
         const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);

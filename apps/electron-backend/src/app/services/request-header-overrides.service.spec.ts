@@ -211,6 +211,23 @@ describe('request header overrides', () => {
         });
     });
 
+    it('clearing unscoped playlist defaults preserves the active stream scope', async () => {
+        const { configureRequestHeaderOverride } =
+            await import('./request-header-overrides.service');
+        configureRequestHeaderOverride(
+            'Playlist/1', null
+        );
+        configureRequestHeaderOverride(
+            'Scoped/2', null, 'https://cdn.example/live/channel.m3u8'
+        );
+        configureRequestHeaderOverride();
+        const listener = mockOnBeforeSendHeaders.mock.calls[0][1];
+        const headers = runHeaderListener(
+            listener, 'https://cdn.example/live/segment.ts'
+        );
+        expect(headers['User-Agent']).toBe('Scoped/2');
+    });
+
     it('clears active header overrides without registering another listener', async () => {
         const { clearRequestHeaderOverride, configureRequestHeaderOverride } =
             await import('./request-header-overrides.service');
