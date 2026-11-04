@@ -22,8 +22,12 @@ export function filterPortalFavoritesForRemoval<T>(
         if (contentType) {
             // The canonical live ID takes priority. An alternate catalog id
             // must not accidentally delete a different stream_id record.
-            const canonical = favorite.stream_id ?? favorite.id;
-            return canonical != null && String(canonical).trim() === expectedId;
+            const streamId = favorite.stream_id != null
+                ? String(favorite.stream_id).trim()
+                : '';
+            const canonical = streamId ||
+                (favorite.id != null ? String(favorite.id).trim() : '');
+            return canonical === expectedId;
         }
 
         // The old untyped caller may have supplied any legacy identity.
