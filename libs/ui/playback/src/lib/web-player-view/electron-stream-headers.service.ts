@@ -31,7 +31,7 @@ export class ElectronStreamHeadersService {
     private epoch(): Promise<number> {
         if (!this.sessionEpoch) {
             // This service is only called when Electron's lease bridge exists.
-            const pending = Promise.resolve(
+            const pending: Promise<number> = Promise.resolve(
                 window.electron!.beginStreamHeaderSession()
             ).then(
                 (value) => {
