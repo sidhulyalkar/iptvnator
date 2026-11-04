@@ -21,6 +21,7 @@ export interface ScopedHeaderConfiguration {
 
 export class ScopedStreamHeaderLeaseController {
     private epoch = 0;
+    private leaseProtocolActivated = false;
     private ownerSenderId: number | null = null;
     private latestGeneration = 0;
     private activeScopeUrl: string | null = null;
@@ -33,6 +34,7 @@ export class ScopedStreamHeaderLeaseController {
     begin(senderId: number): number {
         if (!Number.isSafeInteger(senderId) || senderId < 0) return 0;
         this.epoch += 1;
+        this.leaseProtocolActivated = true;
         this.ownerSenderId = senderId;
         this.latestGeneration = 0;
         this.activeScopeUrl = null;
@@ -42,6 +44,11 @@ export class ScopedStreamHeaderLeaseController {
 
     hasSession(): boolean {
         return this.ownerSenderId !== null;
+    }
+
+    /** Remains true after a crash; old unleased IPC cannot regain authority. */
+    hasActivatedLeaseProtocol(): boolean {
+        return this.leaseProtocolActivated;
     }
 
     /**
