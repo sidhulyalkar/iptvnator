@@ -3,6 +3,4 @@ type: feature
 area: channels
 ---
 
-The dedicated Stalker Live TV inline player now has a shared favorite control. Stalker favorite mutations report errors, with the player reconciling saved state before updating the star. Existing list hearts now update after the portal save callback instead of claiming instant success.
-
-ITV and radio favorite removals now use a type-scoped storage path so colliding movie/series IDs are preserved. Ambiguous legacy records fail closed instead of deleting unrelated favorites.
+The Stalker live player gains a Favorites control. It confirms saved state after the portal write, rather than changing the star optimistically. Channel list and player controls stay in sync. ITV and radio removals are scoped by type and unique ID; ambiguous or colliding records are preserved.
