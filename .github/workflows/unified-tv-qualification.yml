@@ -16,7 +16,7 @@ jobs:
   source-and-types:
     name: Scoped frontend/backend typecheck and release metadata
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v7
         with:
@@ -27,18 +27,21 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
       - run: pnpm run typecheck:ci
       - run: pnpm run typecheck:spec
       - run: pnpm run release:notes:validate
       - name: Lint affected modules
-        run: pnpm nx run-many --target=lint --projects=electron-backend,shared-interfaces,ui-playback,services,portal-stalker-feature --parallel=2 --output-style=static
+        run: pnpm nx run-many --target=lint --projects=electron-backend,shared-interfaces,ui-playback,services,portal-stalker-feature --parallel=1 --output-style=static
         env:
           CI: true
+          NODE_OPTIONS: --max-old-space-size=4096
 
   focused-regressions:
     name: Electron header and Favorites regression suite
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v7
         with:
@@ -49,15 +52,18 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm nx run-many --target=test --projects=electron-backend,ui-playback,services,portal-stalker-feature,shared-interfaces --parallel=2 --output-style=static
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+      - run: pnpm nx run-many --target=test --projects=electron-backend,ui-playback,services,portal-stalker-feature,shared-interfaces --parallel=1 --output-style=static
         env:
           CI: true
+          NODE_OPTIONS: --max-old-space-size=4096
           NX_SKIP_NX_CACHE: true
 
   build-sanity:
     name: Build PWA and Electron backend
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v7
         with:
@@ -68,9 +74,20 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
       - run: pnpm nx build web --configuration=pwa --skip-nx-cache --output-style=static
+        env:
+          CI: true
+          NODE_OPTIONS: --max-old-space-size=4096
+      - run: pnpm nx build website --skip-nx-cache --output-style=static
+        env:
+          CI: true
+          NODE_OPTIONS: --max-old-space-size=4096
+      - run: node --test tools/testing/website-unified-tv-candidate.test.mjs
         env:
           CI: true
       - run: pnpm nx build electron-backend --skip-nx-cache --output-style=static
         env:
           CI: true
+          NODE_OPTIONS: --max-old-space-size=4096
