@@ -20,24 +20,31 @@ const stages = [
     ['Release notes', ['run', 'release:notes:validate']],
     ['Windows MPV pin freshness', ['exec', 'node', 'tools/qualification/check-windows-pin.mjs']],
     ['Windows MPV pin freshness tests', ['exec', 'node', '--test', 'tools/qualification/check-windows-pin.test.mjs']],
+    ['macOS DMG transient retry contract', [
+        'exec', 'node', '--test',
+        'tools/packaging/retry-transient-macos-dmg.test.mjs',
+    ]],
     ...(scope === 'release'
         ? [
             ['Electron unit suite', [
                 'nx', 'test', 'electron-backend', '--runInBand',
                 '--output-style=static',
             ]],
-            ['macOS DMG transient retry contract', [
-                'exec', 'node', '--test',
-                'tools/packaging/retry-transient-macos-dmg.test.mjs',
-            ]],
         ]
         : [
-            ['Electron IPC pure unit contracts', [
+            ['Electron header lease controller tests', [
                 'nx', 'test', 'electron-backend', '--runInBand',
-                '--runTestsByPath',
-                'apps/electron-backend/src/app/services/scoped-stream-header-lease.spec.ts',
-                'apps/electron-backend/src/app/services/request-header-overrides.service.spec.ts',
-                'apps/electron-backend/src/app/events/shared.events.spec.ts',
+                '--runTestsByPath=apps/electron-backend/src/app/services/scoped-stream-header-lease.spec.ts',
+                '--output-style=static',
+            ]],
+            ['Electron request-header scope tests', [
+                'nx', 'test', 'electron-backend', '--runInBand',
+                '--runTestsByPath=apps/electron-backend/src/app/services/request-header-overrides.service.spec.ts',
+                '--output-style=static',
+            ]],
+            ['Electron IPC lifecycle tests', [
+                'nx', 'test', 'electron-backend', '--runInBand',
+                '--runTestsByPath=apps/electron-backend/src/app/events/shared.events.spec.ts',
                 '--output-style=static',
             ]],
         ]),
