@@ -33,6 +33,7 @@ import {
     EpgItem,
     EpgProgram,
     ResolvedPortalPlayback,
+    type StalkerPortalItem,
 } from '@iptvnator/shared/interfaces';
 import { MatDialog } from '@angular/material/dialog';
 import { EpgRuntimeBridgeService } from '@iptvnator/epg/data-access';
@@ -183,7 +184,7 @@ describe('StalkerLiveStreamLayoutComponent', () => {
     };
 
     const playlistService = {
-        getPortalFavorites: jest.fn(() => of([])),
+        getPortalFavorites: jest.fn(() => of<StalkerPortalItem[]>([])),
     };
     const portalPlayer = {
         isEmbeddedPlayer: jest.fn(() => true),
