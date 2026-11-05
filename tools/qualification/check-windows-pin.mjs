@@ -5,6 +5,7 @@
  */
 import { readWindowsRuntimePin } from '../embedded-mpv/windows-runtime-pin.mjs';
 import { runtimePinAgeDays } from '../embedded-mpv/update-windows-runtime-pin.mjs';
+import { pathToFileURL } from 'node:url';
 
 export const PIN_MAX_AGE_DAYS = 21;
 
@@ -19,7 +20,7 @@ export function inspectWindowsPin(pin, now = new Date()) {
     return { ok: true, reason: 'fresh', ageDays };
 }
 
-if (process.argv[1] && import.meta.url === new URL('file://' + process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
     const pin = readWindowsRuntimePin();
     const status = inspectWindowsPin(pin);
     if (!status.ok) {

@@ -43,6 +43,8 @@ git switch qualify/unified-tv-end-to-end-p0-20261104
 corepack enable
 pnpm install --frozen-lockfile
 node tools/qualification/run-unified-tv-gate.mjs
+# A narrower web-only gate for a hosted PWA, never a release signoff:
+IPTVNATOR_QUALIFICATION_SCOPE=web node tools/qualification/run-unified-tv-gate.mjs
 node --test tools/qualification/check-windows-pin.test.mjs
 ```
 
@@ -88,3 +90,5 @@ captioned product recording to decorative motion.
 - The existing Electron builder configuration references the upstream
   `4gray/iptvnator` GitHub publish target. Release the fork only through an
   explicitly reviewed destination and signing/notarization setup.
+
+The isolated Vercel web project runs the `web` scope only, because its Linux build image lacks `libnspr4.so` needed to start the Electron executable. The prior full backend unit test attempt reported 2,692 passing tests plus 44 failures across six suites from the missing runtime library; these are **unexecuted native acceptance** for release purposes. The full `release` scope remains fail-closed and must run in a correctly provisioned native CI environment.
