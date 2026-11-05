@@ -32,20 +32,13 @@ const stages = [
             ]],
         ]
         : [
-            ['Electron header lease controller tests', [
-                'nx', 'test', 'electron-backend', '--runInBand',
-                '--runTestsByPath=apps/electron-backend/src/app/services/scoped-stream-header-lease.spec.ts',
-                '--output-style=static',
-            ]],
-            ['Electron request-header scope tests', [
-                'nx', 'test', 'electron-backend', '--runInBand',
-                '--runTestsByPath=apps/electron-backend/src/app/services/request-header-overrides.service.spec.ts',
-                '--output-style=static',
-            ]],
-            ['Electron IPC lifecycle tests', [
-                'nx', 'test', 'electron-backend', '--runInBand',
-                '--runTestsByPath=apps/electron-backend/src/app/events/shared.events.spec.ts',
-                '--output-style=static',
+            ['Electron scoped IPC contracts', [
+                'exec', 'node', './node_modules/jest/bin/jest.js',
+                '--config', 'apps/electron-backend/jest.config.ts',
+                '--runInBand', '--runTestsByPath',
+                'apps/electron-backend/src/app/services/scoped-stream-header-lease.spec.ts',
+                'apps/electron-backend/src/app/services/request-header-overrides.service.spec.ts',
+                'apps/electron-backend/src/app/events/shared.events.spec.ts',
             ]],
         ]),
     ['Affected UI and service suites', [
