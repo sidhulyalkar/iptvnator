@@ -13,6 +13,7 @@ const stages = [
     ['App TypeScript', ['run', 'typecheck:ci']],
     ['All spec TypeScript', ['run', 'typecheck:spec']],
     ['Release notes', ['run', 'release:notes:validate']],
+    ['Windows MPV pin freshness', ['exec', 'node', 'tools/qualification/check-windows-pin.mjs']],
     ['Electron unit suite', ['nx', 'test', 'electron-backend', '--runInBand', '--output-style=static']],
     ['Affected UI and service suites', [
         'nx', 'run-many', '--target=test',
