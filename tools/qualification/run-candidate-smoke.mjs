@@ -35,13 +35,6 @@ const cases = [
             'libs/ui/playback/src/lib/web-player-view/electron-stream-headers.service.spec.ts',
         ],
     },
-    {
-        name: 'Unified Live radio and watched-history',
-        config: 'libs/portal/shared/ui/jest.config.ts',
-        paths: [
-            'libs/portal/shared/ui/src/lib/components/unified-collection/unified-live-tab.component.spec.ts',
-        ],
-    },
 ];
 for (const item of cases) {
     console.log('[candidate-smoke] ' + item.name);
@@ -55,6 +48,24 @@ for (const item of cases) {
         console.error('[candidate-smoke] FAILED: ' + item.name);
         process.exit(r.status ?? 1);
     }
+}
+// This Angular test project uses a CommonJS Jest setup through the Nx
+// executor. Launching its Jest config under the ESM-mode harness above
+// fails before tests execute ("module is not defined").
+console.log('[candidate-smoke] Unified Live radio + history (full portal-shared-ui suite)');
+const radio = spawnSync(
+    process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm',
+    ['nx', 'test', 'portal-shared-ui', '--runInBand', '--output-style=static'],
+    {
+        cwd,
+        env: { ...env, NODE_OPTIONS: '--max-old-space-size=4096' },
+        stdio: 'inherit',
+        shell: process.platform === 'win32',
+    },
+);
+if (radio.error || radio.status !== 0) {
+    console.error('[candidate-smoke] FAILED: portal-shared-ui regression suite');
+    process.exit(radio.status ?? 1);
 }
 console.log('[candidate-smoke] All focused contracts passed; building deployable PWA.');
 const build = spawnSync(
