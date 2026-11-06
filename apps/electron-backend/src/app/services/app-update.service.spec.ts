@@ -137,6 +137,7 @@ function createService(
     overrides: {
         fetcher?: ReturnType<typeof createReleaseFetcher>;
         isPackaged?: boolean;
+        previewBuild?: boolean;
         platform?: NodeJS.Platform;
         env?: NodeJS.ProcessEnv;
         prepareQuit?: () => void;
@@ -153,6 +154,7 @@ function createService(
             isPackaged: overrides.isPackaged ?? true,
         },
         appVersion: overrides.appVersion,
+        previewBuild: overrides.previewBuild,
         channel: overrides.channel,
         getMainWindow: () => win,
         cancelPreparedQuit: overrides.cancelPreparedQuit,
@@ -167,6 +169,32 @@ function createService(
 }
 
 describe('AppUpdateService', () => {
+    it('keeps unsigned fork previews away from upstream update endpoints', async () => {
+        const fetcher = createReleaseFetcher();
+        const { service, updater } = createService({
+            previewBuild: true,
+            fetcher,
+            platform: 'win32',
+        });
+        expect(service.getStatus()).toMatchObject({
+            status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Unsupported,
+            supportedSelfUpdate: false,
+            manualDownloadUrl:
+                'https://github.com/sidhulyalkar/iptvnator/releases',
+        });
+        expect(updater.autoDownload).toBe(true);
+        await service.checkForUpdatesOnStartup();
+        await service.checkForUpdates();
+        expect(updater.checkForUpdates).not.toHaveBeenCalled();
+        expect(fetcher).not.toHaveBeenCalled();
+        expect(await service.getReleaseNotes()).toMatchObject({
+            htmlUrl: 'https://github.com/sidhulyalkar/iptvnator/releases',
+            hasPrevious: false,
+            hasNext: false,
+        });
+        expect(fetcher).not.toHaveBeenCalled();
+    });
+
     it('reports unsupported status outside packaged builds', () => {
         const { service, updater } = createService({ isPackaged: false });
 

@@ -1,8 +1,13 @@
 import { ipcMain } from 'electron';
 import {
     configureRequestHeaderOverride,
+    clearScopedRequestHeaderOverride,
     type StreamCredentialHeaders,
 } from '../services/request-header-overrides.service';
+import {
+    ScopedStreamHeaderLeaseController,
+    type ScopedHeaderLease,
+} from '../services/scoped-stream-header-lease';
 
 export default class SharedEvents {
     static bootstrapSharedEvents(): Electron.IpcMain {
@@ -23,17 +28,52 @@ function sanitizeCredentials(value: unknown): StreamCredentialHeaders | null {
     };
 }
 
+const scopedHeaderLease = new ScopedStreamHeaderLeaseController(
+    ({ userAgent, referer, scopeUrl, credentials }) =>
+        configureRequestHeaderOverride(userAgent, referer, scopeUrl, credentials),
+    clearScopedRequestHeaderOverride
+);
+
+ipcMain.handle('begin-stream-header-session', (event) => {
+    const sender = event.sender;
+    if (sender.isDestroyed()) return 0;
+    const epoch = scopedHeaderLease.begin(sender.id);
+    if (epoch <= 0) return 0;
+
+    // A renderer crash or window destruction must revoke in-memory stream
+    // credentials even if the renderer never sends a release IPC. A later
+    // renderer session gets a new epoch; its lease cannot be cleared by these
+    // earlier callbacks.
+    const retire = () => { scopedHeaderLease.retire(sender.id, epoch); };
+    sender.once('render-process-gone', retire);
+    sender.once('destroyed', retire);
+    return epoch;
+});
+
 ipcMain.handle(
     'set-user-agent',
-    (_event, userAgent, referer, scopeUrl, credentials) => {
-        setUserAgent(
-            userAgent,
-            referer,
-            scopeUrl,
-            sanitizeCredentials(credentials)
-        );
+    (event, userAgent, referer, scopeUrl, credentials, lease?: ScopedHeaderLease) => {
+        if (event.sender.isDestroyed()) return false;
+        if (lease !== undefined) {
+            return scopedHeaderLease.apply(event.sender.id, lease, {
+                userAgent, referer, scopeUrl,
+                credentials: sanitizeCredentials(credentials),
+            });
+        }
+        // Legacy unscoped playlist defaults remain supported. Scoped legacy
+        // calls cannot bypass the active generation gate after session start.
+        if (scopeUrl != null &&
+            scopedHeaderLease.hasActivatedLeaseProtocol()) return false;
+        setUserAgent(userAgent, referer, scopeUrl, sanitizeCredentials(credentials));
         return true;
     }
+);
+
+ipcMain.handle(
+    'release-stream-headers',
+    (event, lease: ScopedHeaderLease, scopeUrl: string) =>
+        !event.sender.isDestroyed() &&
+        scopedHeaderLease.release(event.sender.id, lease, scopeUrl)
 );
 
 /**

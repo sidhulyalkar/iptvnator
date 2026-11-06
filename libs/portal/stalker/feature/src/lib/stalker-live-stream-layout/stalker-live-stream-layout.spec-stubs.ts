@@ -6,6 +6,7 @@ import {
     output,
 } from '@angular/core';
 import { type PlaybackFallbackRequest } from '@iptvnator/ui/playback';
+import type { StalkerLiveFavoriteTarget } from './stalker-live-favorite-target';
 import {
     EpgProgram,
     RecordingStartMetadata,
@@ -127,4 +128,21 @@ export class StubResizableDirective {
     readonly maxWidth = input<number>(600);
     readonly defaultWidth = input<number>(400);
     readonly storageKey = input<string>('');
+}
+
+@Component({
+    changeDetection: ChangeDetectionStrategy.Eager,
+    selector: 'app-stalker-live-player-favorite',
+    standalone: true,
+    template: '',
+})
+export class StubStalkerLivePlayerFavoriteComponent {
+    readonly target = input.required<StalkerLiveFavoriteTarget>();
+    readonly revision = input(0);
+    readonly favoriteConfirmed = output<{
+        playlistId: string;
+        channelId: string;
+        favoriteId: string;
+        isFavorite: boolean;
+    }>();
 }

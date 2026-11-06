@@ -3,7 +3,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { Store } from '@ngrx/store';
 import { TranslateService } from '@ngx-translate/core';
-import { of } from 'rxjs';
+import { EMPTY, of, throwError } from 'rxjs';
 import { PlaylistActions } from '@iptvnator/m3u-state';
 import { PlaylistsService } from '@iptvnator/services';
 import { PlaylistMeta } from '@iptvnator/shared/interfaces';
@@ -165,7 +165,61 @@ describe('withStalkerFavorites', () => {
         });
     });
 
+    it('reports a failed add without publishing a misleading success', () => {
+        playlistService.addPortalFavorite.mockReturnValueOnce(
+            throwError(() => new Error('provider write failed'))
+        );
+        const done = jest.fn();
+        const failed = jest.fn();
+
+        store.addToFavorites({ id: '42', category_id: 'itv' }, done, failed);
+
+        expect(done).not.toHaveBeenCalled();
+        expect(failed).toHaveBeenCalledTimes(1);
+        expect(ngrxStore.dispatch).not.toHaveBeenCalled();
+        expect(snackBar.open).toHaveBeenCalledWith(
+            'PORTALS.FAVORITE_SAVE_FAILED',
+            undefined,
+            { duration: 6000 }
+        );
+    });
+
+    it('reports a missing playlist through the error callback', () => {
+        store.setCurrentPlaylist(undefined);
+        const failed = jest.fn();
+        store.addToFavorites({ id: '42' }, undefined, failed);
+        store.removeFromFavorites('42', undefined, failed);
+        expect(failed).toHaveBeenCalledTimes(2);
+        expect(playlistService.addPortalFavorite).not.toHaveBeenCalled();
+        expect(playlistService.removeFromPortalFavorites).not.toHaveBeenCalled();
+    });
+
+    it('treats an empty add response as an unconfirmed write', () => {
+        playlistService.addPortalFavorite.mockReturnValueOnce(EMPTY);
+        const done = jest.fn();
+        const failed = jest.fn();
+        store.addToFavorites({ id: '42' }, done, failed);
+        expect(done).not.toHaveBeenCalled();
+        expect(failed).toHaveBeenCalledTimes(1);
+    });
+
     describe('removeFromFavorites', () => {
+        it('treats an empty remove response as an unconfirmed write', () => {
+            playlistService.removeFromPortalFavorites.mockReturnValueOnce(EMPTY);
+            const done = jest.fn();
+            const failed = jest.fn();
+            store.removeFromFavorites('42', done, failed);
+            expect(done).not.toHaveBeenCalled();
+            expect(failed).toHaveBeenCalledTimes(1);
+        });
+
+        it('passes a live-only scope to prevent cross-type deletion', () => {
+            store.removeFromFavorites('42', undefined, undefined, 'itv');
+            expect(
+                playlistService.removeFromPortalFavorites
+            ).toHaveBeenCalledWith('portal-1', '42', 'itv');
+        });
+
         it('removes the favorite and syncs the emptied playlist meta', () => {
             const onDone = jest.fn();
 
@@ -188,6 +242,19 @@ describe('withStalkerFavorites', () => {
                 { duration: 1000 }
             );
             expect(onDone).toHaveBeenCalled();
+        });
+
+        it('reports a failed removal without a success callback', () => {
+            playlistService.removeFromPortalFavorites.mockReturnValueOnce(
+                throwError(() => new Error('provider removal failed'))
+            );
+            const done = jest.fn();
+            const failed = jest.fn();
+            store.removeFromFavorites('42', done, failed);
+
+            expect(done).not.toHaveBeenCalled();
+            expect(failed).toHaveBeenCalledTimes(1);
+            expect(ngrxStore.dispatch).not.toHaveBeenCalled();
         });
 
         it('does nothing when no portal playlist is active', () => {

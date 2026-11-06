@@ -532,6 +532,8 @@ const electronApi: ElectronBridgeApi = {
     ) => ipcRenderer.invoke('save-file-dialog', defaultPath, filters),
     writeFile: (filePath: string, content: string) =>
         ipcRenderer.invoke('write-file', filePath, content),
+    beginStreamHeaderSession: () =>
+        ipcRenderer.invoke('begin-stream-header-session'),
     setUserAgent: (
         userAgent?: string | null,
         referer?: string | null,
@@ -539,15 +541,21 @@ const electronApi: ElectronBridgeApi = {
         credentials?: {
             authorization?: string | null;
             cookie?: string | null;
-        } | null
+        } | null,
+        lease?: { epoch: number; generation: number }
     ) =>
         ipcRenderer.invoke(
             'set-user-agent',
             userAgent,
             referer,
             scopeUrl,
-            credentials
+            credentials,
+            lease
         ),
+    releaseStreamHeaders: (
+        lease: { epoch: number; generation: number },
+        scopeUrl: string
+    ) => ipcRenderer.invoke('release-stream-headers', lease, scopeUrl),
     openInMpv: (
         url: string,
         title: string,

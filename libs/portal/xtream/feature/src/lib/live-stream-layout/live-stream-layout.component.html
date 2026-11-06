@@ -161,6 +161,11 @@
     @if (streamUrl) {
         @if (isEmbeddedPlayer) {
             <div class="video-player">
+                @if (activeFavoriteTarget(); as favoriteTarget) {
+                    <app-xtream-live-player-favorite
+                        [target]="favoriteTarget"
+                    />
+                }
                 <app-web-player-view
                     [playbackSessionKey]="playbackSessionKey()"
                     [streamUrl]="streamUrl"

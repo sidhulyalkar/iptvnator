@@ -75,7 +75,7 @@ describe('epg-db.events', () => {
         expect(all).not.toHaveBeenCalled();
     });
 
-    it('searches programmes with a LIKE pattern built from the trimmed term', async () => {
+    it('falls back to parameterized literal search when the FTS integrity marker is absent', async () => {
         const rows = [
             {
                 channel_id: 'nhk.jp',
@@ -90,7 +90,9 @@ describe('epg-db.events', () => {
                 channel_name: 'NHK',
             },
         ];
-        const all = jest.fn().mockResolvedValue(rows);
+        const all = jest.fn()
+            .mockResolvedValueOnce([])
+            .mockResolvedValueOnce(rows);
         getDatabase.mockResolvedValue({ all });
 
         // Raw snake_case columns become the public `EpgProgram` shape.
@@ -111,12 +113,57 @@ describe('epg-db.events', () => {
             },
         ]);
 
-        expect(all).toHaveBeenCalledTimes(1);
-        const query = all.mock.calls[0][0] as {
-            queryChunks?: unknown[];
-        };
-        const boundParams = JSON.stringify(query);
-        expect(boundParams).toContain('%news%');
-        expect(boundParams).toContain('25');
+        expect(all).toHaveBeenCalledTimes(2);
+        // Check the integrity marker first. Without a verified marker, FTS
+        // would silently omit historical programmes and must not be queried.
+        const markerQuery = JSON.stringify(all.mock.calls[0][0]);
+        expect(markerQuery).toContain('epg:fts-external-content-integrity:v1');
+
+        const fallbackQuery = JSON.stringify(all.mock.calls[1][0]);
+        expect(fallbackQuery).toContain('LIKE');
+        expect(fallbackQuery).toContain('%news%');
+        expect(fallbackQuery).toContain('25');
+        expect(fallbackQuery).not.toContain('MATCH');
+    });
+
+    it('uses bound FTS MATCH tokens when the external-content index is verified', async () => {
+        // An indexed page filling the request limit must not query the literal
+        // backing table: the worker has already verified FTS completeness.
+        const rows = Array.from({ length: 25 }, (_, index) => ({
+            id: index + 1,
+            channel_id: 'nhk.jp',
+            start: '2026-09-06T16:00:00.000Z',
+            stop: '2026-09-06T16:30:00.000Z',
+            title: 'News ' + index,
+            description: null,
+            category: 'news',
+            icon_url: null,
+            rating: null,
+            episode_num: null,
+            channel_name: 'NHK',
+        }));
+        const all = jest.fn()
+            .mockResolvedValueOnce([
+                { value: 'verified-external-content-v1' },
+            ])
+            .mockResolvedValueOnce(rows);
+        getDatabase.mockResolvedValue({ all });
+
+        const result = await getIpcMainHandler('EPG_DB_SEARCH_PROGRAMS')(
+            {},
+            ' news ',
+            25
+        );
+        expect(result).toHaveLength(25);
+        expect((result as Array<{ channel: string }>)[0].channel).toBe('nhk.jp');
+        expect(all).toHaveBeenCalledTimes(2);
+
+        const markerQuery = JSON.stringify(all.mock.calls[0][0]);
+        expect(markerQuery).toContain('epg:fts-external-content-integrity:v1');
+        const indexedQuery = JSON.stringify(all.mock.calls[1][0]);
+        expect(indexedQuery).toContain('MATCH');
+        expect(indexedQuery).toContain('news');
+        expect(indexedQuery).toContain('25');
+        expect(indexedQuery).not.toContain('%news%');
     });
 });

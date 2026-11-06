@@ -16,7 +16,7 @@
     <button
         type="button"
         class="channel-content"
-        [attr.aria-label]="displayName()"
+        [attr.aria-label]="contextualName()"
         [attr.aria-disabled]="disabled() || null"
     >
         <div class="channel-logo-shell" aria-hidden="true">
@@ -35,6 +35,11 @@
         <div class="channel-details">
             <div class="channel-name-row">
                 <div class="channel-name">{{ displayName() }}</div>
+                @if (sourceLabel()) {
+                    <span class="channel-source" [title]="sourceLabel()">{{
+                        sourceLabel()
+                    }}</span>
+                }
                 @if (catchupAvailable()) {
                     <mat-icon
                         class="catchup-badge"
@@ -104,7 +109,11 @@
                             : 'CHANNELS.ADD_FAVORITE'
                         ) | translate
                     "
-                    [attr.aria-label]="'CHANNELS.FAVORITE' | translate"
+                    [attr.aria-label]="
+                        ('CHANNELS.FAVORITE' | translate) +
+                        ': ' +
+                        contextualName()
+                    "
                     [attr.aria-pressed]="isFavorite()"
                     (click)="onFavoriteClick($event)"
                 >

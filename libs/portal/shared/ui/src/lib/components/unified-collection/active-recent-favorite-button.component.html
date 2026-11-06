@@ -1,0 +1,9 @@
+@if (actionable(); as channel) {
+    <app-live-player-favorite-button
+        testId="active-recent-favorite"
+        [channelName]="channel.name"
+        [sourceName]="channel.playlistName"
+        [isFavorite]="favoriteUids().has(channel.uid)"
+        (toggleRequested)="toggle()"
+    />
+}

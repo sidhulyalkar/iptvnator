@@ -5,101 +5,146 @@ function getHeaderValue(
     headers: ResolvedPortalPlayback['headers'] | undefined,
     name: string
 ): string | undefined {
-    if (!headers) {
-        return undefined;
-    }
-
+    if (!headers) return undefined;
     const matchingKey = Object.keys(headers).find(
         (key) => key.toLowerCase() === name.toLowerCase()
     );
     return matchingKey ? headers[matchingKey] : undefined;
 }
 
+/** IPC setup is independent of media/network/first-frame deadlines. */
+export const ELECTRON_STREAM_HEADER_SETUP_TIMEOUT_MS = 15_000;
+
 /**
- * Single owner of the scoped Electron request-header override for built-in
- * playback. There is exactly one scoped override slot in the main process, so
- * every surface that plays a stream inline goes through this service:
- * `WebPlayerViewComponent` for the web video players, plus the two surfaces
- * that render `AudioPlayerComponent` for radio and therefore never mount a
- * `WebPlayerViewComponent` at all — the Stalker live layout, and the unified
- * live tab behind the Favorites / Recently Viewed collection routes.
- *
- * `apply()` extracts the full header set from the resolved playback —
- * including the portal Cookie/Authorization that auth-gated streams require —
- * and hands it to the main process scoped to the stream's URL. A playback
- * without custom headers deliberately clears the previous scoped override so
- * stale headers never leak onto the next stream. `clear()` releases the slot
- * only while the caller's stream still owns it, so a consumer being destroyed
- * cannot wipe the override a newer consumer just configured.
+ * Single renderer owner for all built-in video and audio header handoffs.
+ * Main owns the authoritative epoch/generation, not this renderer's timeout.
+ * A cancelled or timed-out request is fenced by a newer release generation.
  */
 @Injectable({ providedIn: 'root' })
 export class ElectronStreamHeadersService {
-    /** Guards against a superseded apply resolving its header IPC late. */
     private syncSequence = 0;
-    /** Stream URL the currently configured override belongs to. */
     private currentScopeUrl: string | null = null;
+    private currentOwner: object | null = null;
+    private cancelPendingApply: (() => void) | null = null;
+    private sessionEpoch: Promise<number> | null = null;
 
-    /**
-     * Configures the scoped override for this playback. Resolves `true` when
-     * this apply is still the newest one at the time the main process
-     * acknowledged it — callers must only hand the source to a player on
-     * `true`, so the first media request already carries the headers. Returns
-     * null when there is no Electron bridge (PWA), where sources apply
-     * synchronously and no override exists.
-     */
-    apply(playback: ResolvedPortalPlayback): Promise<boolean> | null {
-        // Feature-detect the bridge method rather than the bridge object:
-        // partial bridges (tests, older preloads) must behave like the PWA
-        // instead of throwing inside a playback flow.
-        if (typeof window.electron?.setUserAgent !== 'function') {
-            return null;
+    private epoch(): Promise<number> {
+        if (!this.sessionEpoch) {
+            // This service is only called when Electron's lease bridge exists.
+            const pending: Promise<number> = Promise.resolve(
+                window.electron!.beginStreamHeaderSession()
+            ).then(
+                (value) => {
+                    if (Number.isSafeInteger(value) && value > 0) return value;
+                    if (this.sessionEpoch === pending) this.sessionEpoch = null;
+                    return 0;
+                },
+                () => {
+                    if (this.sessionEpoch === pending) this.sessionEpoch = null;
+                    return 0;
+                }
+            );
+            this.sessionEpoch = pending;
         }
+        return this.sessionEpoch;
+    }
 
-        const sequence = ++this.syncSequence;
-        const userAgent =
-            playback.userAgent ??
-            getHeaderValue(playback.headers, 'User-Agent');
-        const referer =
-            playback.referer ?? getHeaderValue(playback.headers, 'Referer');
-        const cookie = getHeaderValue(playback.headers, 'Cookie');
-        const authorization = getHeaderValue(playback.headers, 'Authorization');
-
-        this.currentScopeUrl = playback.streamUrl;
-        return window.electron
-            .setUserAgent(
-                userAgent,
-                referer,
-                playback.streamUrl,
-                cookie || authorization ? { authorization, cookie } : undefined
-            )
-            .catch((error: unknown) => {
-                console.warn(
-                    '[ElectronStreamHeaders] Failed to configure request headers:',
-                    error
-                );
-                return true;
-            })
-            .then(() => sequence === this.syncSequence);
+    private releaseActive(scopeUrl: string): void {
+        if (this.currentScopeUrl !== scopeUrl) return;
+        const generation = ++this.syncSequence;
+        this.currentScopeUrl = null;
+        this.currentOwner = null;
+        const bridge = window.electron;
+        const epoch = this.sessionEpoch;
+        if (!bridge || !epoch) return;
+        void epoch.then((value) => {
+            if (value <= 0) return false;
+            return bridge.releaseStreamHeaders(
+                { epoch: value, generation }, scopeUrl
+            );
+        }).catch(() => undefined);
     }
 
     /**
-     * Clears the scoped override — portal credentials must not outlive the
-     * playback session that needed them. No-ops when another stream has taken
-     * ownership of the slot since, and always in the PWA.
+     * Returns null only in a PWA. A partially upgraded Electron bridge fails
+     * closed (false), never silently starts an authenticated media request.
      */
-    clear(streamUrl: string | null): void {
+    apply(playback: ResolvedPortalPlayback, owner: object = this): Promise<boolean> | null {
+        this.cancelPendingApply?.();
+        this.cancelPendingApply = null;
+
+        const bridge = window.electron;
+        if (!bridge) return null;
         if (
-            typeof window.electron?.setUserAgent !== 'function' ||
-            streamUrl === null ||
-            this.currentScopeUrl !== streamUrl
-        ) {
-            return;
+            typeof bridge.beginStreamHeaderSession !== 'function' ||
+            typeof bridge.releaseStreamHeaders !== 'function' ||
+            typeof bridge.setUserAgent !== 'function'
+        ) return Promise.resolve(false);
+
+        const sequence = ++this.syncSequence;
+        const userAgent = playback.userAgent ??
+            getHeaderValue(playback.headers, 'User-Agent');
+        const referer = playback.referer ??
+            getHeaderValue(playback.headers, 'Referer');
+        const cookie = getHeaderValue(playback.headers, 'Cookie');
+        const authorization = getHeaderValue(playback.headers, 'Authorization');
+        this.currentScopeUrl = playback.streamUrl;
+        this.currentOwner = owner;
+
+        let ipc: Promise<boolean>;
+        try {
+            ipc = this.epoch().then((epoch) => {
+                if (epoch <= 0) return false;
+                return bridge.setUserAgent(
+                    userAgent, referer, playback.streamUrl,
+                    cookie || authorization ? { authorization, cookie } : undefined,
+                    { epoch, generation: sequence }
+                );
+            });
+        } catch {
+            console.warn('[ElectronStreamHeaders] Request-header setup failed');
+            this.releaseActive(playback.streamUrl);
+            return Promise.resolve(false);
         }
 
-        this.syncSequence += 1;
-        this.currentScopeUrl = null;
-        void window.electron
-            .setUserAgent(undefined, undefined, streamUrl)
-            .catch(() => undefined);
+        return new Promise<boolean>((resolve) => {
+            let settled = false;
+            const settle = (succeeded: boolean, failed = false): void => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(deadline);
+                if (this.cancelPendingApply === cancel) {
+                    this.cancelPendingApply = null;
+                }
+                const current = sequence === this.syncSequence;
+                if (failed && current) {
+                    // Never print an IPC exception: it may contain credentials.
+                    console.warn('[ElectronStreamHeaders] Request-header setup failed');
+                }
+                if (!succeeded && current) this.releaseActive(playback.streamUrl);
+                resolve(succeeded && current);
+            };
+            const cancel = (): void => settle(false);
+            const deadline = setTimeout(
+                () => settle(false, true),
+                ELECTRON_STREAM_HEADER_SETUP_TIMEOUT_MS
+            );
+            this.cancelPendingApply = cancel;
+            void ipc.then(
+                (acknowledged) => settle(acknowledged === true, acknowledged !== true),
+                () => settle(false, true)
+            );
+        });
+    }
+
+    /** A destroyed/obsolete surface never clears a different active URL. */
+    clear(streamUrl: string | null, owner: object = this): void {
+        if (
+            !streamUrl || this.currentScopeUrl !== streamUrl ||
+            this.currentOwner !== owner
+        ) return;
+        this.cancelPendingApply?.();
+        this.cancelPendingApply = null;
+        this.releaseActive(streamUrl);
     }
 }

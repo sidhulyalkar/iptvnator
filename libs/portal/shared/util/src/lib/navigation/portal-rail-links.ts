@@ -159,6 +159,13 @@ export function buildPortalRailLinks(
                 exact: true,
                 section: 'groups',
             },
+            {
+                icon: 'star',
+                tooltip: 'Favorites (this playlist)',
+                path: [...root, 'favorites'],
+                exact: true,
+                section: 'favorites',
+            },
         ];
 
         return {

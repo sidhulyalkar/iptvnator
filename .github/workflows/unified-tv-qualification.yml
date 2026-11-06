@@ -1,0 +1,93 @@
+name: Unified TV integration qualification
+on:
+  push:
+    branches:
+      - qualify/unified-tv-end-to-end-p0-20261104
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: unified-tv-qualification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-and-types:
+    name: Scoped frontend/backend typecheck and release metadata
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+      - run: pnpm run typecheck:ci
+      - run: pnpm run typecheck:spec
+      - run: pnpm run release:notes:validate
+      - name: Lint affected modules
+        run: pnpm nx run-many --target=lint --projects=electron-backend,shared-interfaces,ui-playback,services,portal-stalker-feature --parallel=1 --output-style=static
+        env:
+          CI: true
+          NODE_OPTIONS: --max-old-space-size=4096
+
+  focused-regressions:
+    name: Electron header and Favorites regression suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+      - run: pnpm nx run-many --target=test --projects=electron-backend,ui-playback,services,portal-stalker-feature,shared-interfaces --parallel=1 --output-style=static
+        env:
+          CI: true
+          NODE_OPTIONS: --max-old-space-size=4096
+          NX_SKIP_NX_CACHE: true
+
+  build-sanity:
+    name: Build PWA and Electron backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+      - run: pnpm nx build web --configuration=pwa --skip-nx-cache --output-style=static
+        env:
+          CI: true
+          NODE_OPTIONS: --max-old-space-size=4096
+      - run: pnpm nx build website --skip-nx-cache --output-style=static
+        env:
+          CI: true
+          NODE_OPTIONS: --max-old-space-size=4096
+      - run: node --test tools/testing/website-unified-tv-candidate.test.mjs
+        env:
+          CI: true
+      - run: pnpm nx build electron-backend --skip-nx-cache --output-style=static
+        env:
+          CI: true
+          NODE_OPTIONS: --max-old-space-size=4096

@@ -493,6 +493,27 @@ describe('GlobalFavoritesListComponent', () => {
         fixture.componentInstance.openContextMenuChannelInPlaylist();
         expect(requested).not.toHaveBeenCalled();
     });
+    it('identifies same-named favorites by safe source rather than leaking playlist credentials', () => {
+        fixture.componentRef.setInput('channels', [
+            buildChannel('one', 'News', { playlistName: 'Family TV', playlistId: 'family' }),
+            buildChannel('two', 'News', {
+                playlistName: 'http://user:secret@panel.example.com/get.php',
+                playlistId: 'provider',
+                sourceType: 'xtream',
+                xtreamId: 42,
+                streamUrl: undefined,
+            }),
+        ]);
+        fixture.detectChanges();
+        const rows: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('.channel-list-item'));
+        expect(rows).toHaveLength(2);
+        expect(rows.map(row => row.querySelector('.channel-source')?.textContent?.trim()))
+            .toEqual(['Family TV', 'panel.example.com']);
+        expect(rows.map(row => row.querySelector('button.channel-content')?.getAttribute('aria-label')))
+            .toEqual(['News · Family TV', 'News · panel.example.com']);
+        expect(fixture.nativeElement.textContent).not.toContain('secret');
+    });
+
 });
 
 function buildChannel(

@@ -66,6 +66,7 @@ import { createUnifiedLiveRecording } from './unified-live-recording-metadata';
 import { createUnifiedLiveSelection } from './unified-live-selection';
 import { createUnifiedLiveSelectionGeneration } from './unified-live-selection-generation';
 import { createUnifiedLiveSelectionView } from './unified-live-selection-view';
+import { ActiveRecentFavoriteButtonComponent } from './active-recent-favorite-button.component';
 
 @Component({
     selector: 'app-unified-live-tab',
@@ -73,6 +74,7 @@ import { createUnifiedLiveSelectionView } from './unified-live-selection-view';
     styleUrl: './unified-live-tab.component.scss',
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [
+        ActiveRecentFavoriteButtonComponent,
         AudioPlayerComponent,
         EpgListViewComponent,
         EpgTimelineComponent,

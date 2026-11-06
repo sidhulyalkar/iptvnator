@@ -93,6 +93,13 @@ describe('buildPortalRailLinks', () => {
                 exact: true,
                 section: 'groups',
             },
+            {
+                icon: 'star',
+                tooltip: 'Favorites (this playlist)',
+                path: ['/workspace', 'playlists', 'm3u-1', 'favorites'],
+                exact: true,
+                section: 'favorites',
+            },
         ]);
         expect(links.secondary).toEqual([]);
     });

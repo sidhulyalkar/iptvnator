@@ -87,7 +87,7 @@ describe('M3uEpgGuideSourceService', () => {
                 },
                 {
                     provide: SettingsStore,
-                    useValue: { stripCountryPrefix: signal(false) },
+                    useValue: { stripCountryPrefix: signal(false), resolvedEpgOffsetMinutes: signal(0) },
                 },
                 {
                     provide: TranslateService,
