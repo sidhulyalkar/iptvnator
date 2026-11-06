@@ -5,13 +5,17 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
     createForkPreviewInstallerConfig,
-    PREVIEW_APP_ID, PREVIEW_PRODUCT_NAME, PREVIEW_OUTPUT_DIRECTORY,
+    PREVIEW_APP_ID, PREVIEW_PACKAGE_NAME, PREVIEW_PRODUCT_NAME, PREVIEW_OUTPUT_DIRECTORY,
+    createForkPreviewPackageManifest,
     PREVIEW_RELEASES_URL,
 } from './fork-preview-installer.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const original = JSON.parse(
     fs.readFileSync(join(root, 'electron-builder.json'), 'utf8')
+);
+const packageMetadata = JSON.parse(
+    fs.readFileSync(join(root, 'package.json'), 'utf8')
 );
 
 for (const [platform, arch] of [
@@ -26,6 +30,7 @@ for (const [platform, arch] of [
         assert.deepEqual(config.fileAssociations, []);
         assert.equal(config.directories.output, PREVIEW_OUTPUT_DIRECTORY);
         assert.equal(config.extraMetadata.productName, PREVIEW_PRODUCT_NAME);
+        assert.equal(config.extraMetadata.name, PREVIEW_PACKAGE_NAME);
         assert.notEqual(config.appId, original.appId);
         assert.notEqual(config.directories.output, original.directories.output);
         assert.equal(original.productName, 'IPTVnator');
@@ -41,12 +46,22 @@ for (const [platform, arch] of [
             assert.equal(config.mac.identity, null);
         }
         if (platform === 'linux') {
+            assert.ok(config.deb.fpm.includes('--depends=libmpv2'));
+            assert.ok(config.deb.fpm.includes('--depends=libegl1'));
             assert.equal(config.linux.executableName, 'iptvnator-preview');
             assert.deepEqual(config.linux.target, [{target: 'deb', arch: ['x64']}]);
             assert.equal(config.appImage.desktop.entry['X-AppImage-UpdateURL'], PREVIEW_RELEASES_URL);
         }
     });
 }
+test('changes the actual package name, not only the installer filename', () => {
+    const changed = createForkPreviewPackageManifest(packageMetadata);
+    assert.equal(changed.name, PREVIEW_PACKAGE_NAME);
+    assert.equal(changed.homepage, 'https://github.com/sidhulyalkar/iptvnator');
+    assert.equal(packageMetadata.name, 'iptvnator');
+    assert.ok(changed.packageManager);
+});
+
 test('rejects unsupported targets instead of accidentally shipping mixed architectures', () => {
     assert.throws(() => createForkPreviewInstallerConfig(original, 'windows', 'arm64'));
     assert.throws(() => createForkPreviewInstallerConfig(original, 'linux', 'arm64'));

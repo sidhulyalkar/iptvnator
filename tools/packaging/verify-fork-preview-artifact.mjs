@@ -10,7 +10,7 @@ import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import {
-    PREVIEW_APP_ID, PREVIEW_PRODUCT_NAME, PREVIEW_OUTPUT_DIRECTORY,
+    PREVIEW_APP_ID, PREVIEW_PACKAGE_NAME, PREVIEW_PRODUCT_NAME, PREVIEW_OUTPUT_DIRECTORY,
 } from './fork-preview-installer.mjs';
 
 const require = createRequire(import.meta.url);
@@ -68,6 +68,8 @@ if (direct) {
     const asar = findAsar(output);
     assert.ok(asar, 'Packaged Electron app.asar must exist');
     const metadata = JSON.parse(extractFile(asar, 'package.json').toString());
+    assert.equal(metadata.name, PREVIEW_PACKAGE_NAME,
+        'Package name must not overwrite the regular IPTVnator install');
     assert.equal(metadata.productName, PREVIEW_PRODUCT_NAME,
         'Packaged productName must differ from upstream IPTVnator');
     for (const name of artifacts) {

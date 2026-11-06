@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import {
     FORK_PREVIEW_PRODUCT_NAME,
     FORK_PREVIEW_PROFILE_NAME,
@@ -15,7 +16,7 @@ describe('fork preview installer runtime isolation', () => {
     it('uses a distinct profile directory without inspecting stable data', () => {
         const stableRoot = '/home/example/.config';
         expect(getForkPreviewUserDataPath(stableRoot)).toBe(
-            stableRoot + '/' + FORK_PREVIEW_PROFILE_NAME
+            join(stableRoot, FORK_PREVIEW_PROFILE_NAME)
         );
     });
 });
