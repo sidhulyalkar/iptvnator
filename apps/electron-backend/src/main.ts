@@ -1,5 +1,5 @@
 // Select persistence before eager imports (notably electron-conf) cache userData.
-import './app/services/electron-profile-bootstrap';
+import { isForkPreviewBuild } from './app/services/electron-profile-bootstrap';
 import { app, BrowserWindow, ipcMain } from 'electron';
 import App from './app/app';
 import PlaylistOpenEvents from './app/events/playlist-open.events';
@@ -41,7 +41,7 @@ import {
 } from './app/services/playlist-open-request';
 import { EMBEDDED_MPV_FRAME_COPY, store } from './app/services/store.service';
 
-app.setName('iptvnator');
+app.setName(isForkPreviewBuild ? 'iptvnator-preview' : 'iptvnator');
 
 traceStartupPhase('compile-cache', () => readCompileCacheOutcome());
 // Before anything can open the shared database connection.

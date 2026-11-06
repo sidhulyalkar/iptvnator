@@ -45,6 +45,7 @@ import { registerStreamProbeHandlers } from '../events/stream-probe';
 import { registerConnectivityGuardHandlers } from '../events/connectivity-guard.events';
 import { traceStartupPhase } from '../services/debug-trace';
 import { AppUpdateService } from '../services/app-update.service';
+import { isForkPreviewBuild } from '../services/electron-profile-bootstrap';
 import {
     onAppUpdateChannelChange,
     readStoredAppUpdateChannel,
@@ -71,6 +72,7 @@ export function bootstrapDeferredEvents(
     const { windowCloseGuard } = context;
     const appUpdateService = new AppUpdateService({
         app,
+        previewBuild: isForkPreviewBuild,
         appVersion: context.appVersion,
         channel: readStoredAppUpdateChannel(),
         getMainWindow: () => App.mainWindow,
