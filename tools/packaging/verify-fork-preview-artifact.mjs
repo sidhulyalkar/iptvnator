@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import {
@@ -76,6 +77,20 @@ if (direct) {
         const file = path.join(output, name);
         assert.ok(fs.statSync(file).size > 1000000,
             'Installer/ZIP is implausibly small: ' + name);
+        if (platform === 'linux') {
+            const packageId = spawnSync(
+                'dpkg-deb', ['--field', file, 'Package'], { encoding: 'utf8' }
+            );
+            assert.equal(packageId.status, 0, 'DEB metadata must be readable');
+            assert.equal(packageId.stdout.trim(), PREVIEW_PACKAGE_NAME,
+                'DEB must not replace the upstream iptvnator package');
+            const dependencies = spawnSync(
+                'dpkg-deb', ['--field', file, 'Depends'], { encoding: 'utf8' }
+            );
+            assert.equal(dependencies.status, 0);
+            assert.ok(dependencies.stdout.includes('libmpv2'),
+                'Bundled native helper needs a declared libmpv2 dependency');
+        }
         const hash = createHash('sha256');
         const stream = fs.createReadStream(file);
         for await (const data of stream) hash.update(data);
