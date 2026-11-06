@@ -1,0 +1,165 @@
+name: Fork preview installers (unsigned, artifact only)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - qualify/unified-tv-end-to-end-p0-20261104
+    paths:
+      - 'apps/**'
+      - 'libs/**'
+      - 'tools/**'
+      - 'electron-builder.json'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/fork-preview-installers.yml'
+
+# Read-only: NEVER create tags, publish a release, or contact the upstream
+# 4gray repository. These are limited-lifetime CI artifacts for manual testing.
+permissions:
+  contents: read
+
+concurrency:
+  group: fork-preview-installers-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  installer-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: |
+          node --test tools/packaging/fork-preview-installer.test.mjs
+          node --test tools/packaging/verify-fork-preview-artifact.test.mjs
+          pnpm run typecheck:ci
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+
+  windows-x64:
+    needs: installer-contracts
+    runs-on: windows-2022
+    timeout-minutes: 110
+    env:
+      CI: 'true'
+      NX_DAEMON: 'false'
+      NODE_OPTIONS: --max-old-space-size=4096
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      IPTVNATOR_REQUIRE_EMBEDDED_MPV: '1'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Resolve pinned LGPL Windows MPV archive
+        id: mpv-pin
+        run: node tools/embedded-mpv/windows-runtime-pin.mjs --github-output
+      - name: Verify and stage pinned Windows MPV binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm embedded-mpv:stage-runtime:windows-archive -- "${{ steps.mpv-pin.outputs.url }}" "${{ steps.mpv-pin.outputs.sha256 }}"
+      - name: Build isolated Windows NSIS installer and portable ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/packaging/fork-preview-installer.mjs --apply windows x64
+          pnpm nx run electron-backend:make --output-style=static
+          node tools/packaging/verify-fork-preview-artifact.mjs windows
+      - uses: actions/upload-artifact@v7
+        with:
+          name: iptvnator-preview-windows-x64-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            dist/installer-preview/*.exe
+            dist/installer-preview/*.zip
+            dist/installer-preview/*.sha256
+
+  macos-arm64:
+    needs: installer-contracts
+    runs-on: macos-latest
+    timeout-minutes: 100
+    env:
+      CI: 'true'
+      NX_DAEMON: 'false'
+      NODE_OPTIONS: --max-old-space-size=4096
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      IPTVNATOR_REQUIRE_EMBEDDED_MPV: '0'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build unsigned Apple Silicon ZIP (browser player; no embedded MPV)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/packaging/fork-preview-installer.mjs --apply macos arm64
+          pnpm nx run electron-backend:make --output-style=static
+          node tools/packaging/verify-fork-preview-artifact.mjs macos
+      - uses: actions/upload-artifact@v7
+        with:
+          name: iptvnator-preview-macos-arm64-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            dist/installer-preview/*.zip
+            dist/installer-preview/*.sha256
+
+  linux-x64:
+    needs: installer-contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
+    env:
+      CI: 'true'
+      NX_DAEMON: 'false'
+      NODE_OPTIONS: --max-old-space-size=4096
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      IPTVNATOR_REQUIRE_EMBEDDED_MPV: '0'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential libmpv-dev libegl-dev libgl-dev libgbm-dev
+      - run: pnpm install --frozen-lockfile
+      - name: Build isolated Linux x64 DEB
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/packaging/fork-preview-installer.mjs --apply linux x64
+          pnpm nx run electron-backend:make --output-style=static
+          node tools/packaging/verify-fork-preview-artifact.mjs linux
+      - uses: actions/upload-artifact@v7
+        with:
+          name: iptvnator-preview-linux-x64-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            dist/installer-preview/*.deb
+            dist/installer-preview/*.sha256
