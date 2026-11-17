@@ -33,7 +33,8 @@ class LocalAssetClient extends WebViewClient {
         if (!HOST.equals(uri.getHost())) return null;
 
         // A hostile page must never make an appassets request escape to the internet.
-        if (!"https".equals(uri.getScheme()) || !uri.getPath().startsWith("/assets/")) {
+        if (!"https".equals(uri.getScheme()) || uri.getPath() == null
+                || !uri.getPath().startsWith("/assets/")) {
             return missing();
         }
         WebResourceResponse local = loader.shouldInterceptRequest(uri);
@@ -55,6 +56,7 @@ class LocalAssetClient extends WebViewClient {
         Uri uri = request.getUrl();
         if ("https".equals(uri.getScheme())
                 && HOST.equals(uri.getHost())
+                && uri.getPath() != null
                 && uri.getPath().startsWith("/assets/")) return false;
         String scheme = uri.getScheme();
         if ("http".equals(scheme) || "https".equals(scheme)) {

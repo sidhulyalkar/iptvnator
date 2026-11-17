@@ -11,7 +11,7 @@ export function inspectBundle(directory) {
         return ['Missing index.html: build web with --configuration=android'];
     }
     const html = readFileSync(indexFile, 'utf8');
-    if (!/<base\s+href=["']\/assets\/["']\s*\/>/.test(html)) {
+    if (!/<base\s+href=["']\/assets\/["']\s*\/?\s*>/.test(html)) {
         errors.push('Android build must use <base href="/assets/">');
     }
     if (existsSync(join(directory, 'ngsw-worker.js'))) {

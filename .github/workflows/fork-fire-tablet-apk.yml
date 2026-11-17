@@ -76,8 +76,20 @@ jobs:
           grep -Fq "package: name='dev.sidhulyalkar.iptvnator.preview'" "$RUNNER_TEMP/fire-badging.txt"
           grep -Fq "sdkVersion:'28'" "$RUNNER_TEMP/fire-badging.txt"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
-          unzip -Z1 "$apk" | grep -Fxq 'assets/index.html'
-          unzip -Z1 "$apk" | grep -Eq '^assets/main[.-].*\.js$'
+          unzip -Z1 "$apk" > "$RUNNER_TEMP/fire-apk-contents.txt"
+          grep -Fxq 'assets/index.html' "$RUNNER_TEMP/fire-apk-contents.txt"
+          grep -Eq '^assets/main[.-].*\.js
+          mkdir -p dist/android-preview
+          output="IPTVnator-Fire-Preview-${GITHUB_SHA:0:12}.apk"
+          cp "$apk" "dist/android-preview/$output"
+          (cd dist/android-preview && sha256sum "$output" > "$output.sha256")
+      - uses: actions/upload-artifact@v7
+        with:
+          name: iptvnator-fire-tablet-preview-${{ github.sha }}
+          retention-days: 7
+          if-no-files-found: error
+          path: dist/android-preview/*
+ "$RUNNER_TEMP/fire-apk-contents.txt"
           mkdir -p dist/android-preview
           output="IPTVnator-Fire-Preview-${GITHUB_SHA:0:12}.apk"
           cp "$apk" "dist/android-preview/$output"

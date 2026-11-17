@@ -36,7 +36,7 @@ tasks.named('preBuild') {
                 'Missing bundled web app. Run: pnpm nx build web --configuration=android'
             )
         }
-        if (!html.getText('UTF-8').contains('<base href="/assets/">')) {
+        if (!(html.getText('UTF-8') =~ /<base\s+href=['"]\/assets\/['"]\s*\/?\s*>/).find()) {
             throw new GradleException('Android bundle must use /assets/ base href')
         }
     }
