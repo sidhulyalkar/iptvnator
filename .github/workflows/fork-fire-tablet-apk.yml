@@ -60,7 +60,7 @@ jobs:
         run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Qualify Android bundle contracts
         run: |
-          node --test tools/android/verify-android-bundle.test.mjs
+          node --test tools/android/*.test.mjs
           pnpm run typecheck:web
           pnpm nx build web --configuration=android --output-style=static
           node tools/android/verify-android-bundle.mjs
