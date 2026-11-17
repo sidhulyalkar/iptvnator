@@ -74,4 +74,21 @@ describe('runtime config helpers', () => {
             )
         ).toBe(false);
     });
+    it('does not register an Angular service worker inside a packaged Fire tablet', () => {
+        expect(
+            shouldEnableServiceWorker(
+                true,
+                { serviceWorker: {} } as Navigator,
+                { protocol: 'https:', hostname: 'appassets.androidplatform.net' }
+            )
+        ).toBe(false);
+        expect(
+            shouldEnableServiceWorker(
+                true,
+                { serviceWorker: {} } as Navigator,
+                { protocol: 'https:', hostname: 'my-self-hosted-pwa.example' }
+            )
+        ).toBe(true);
+    });
+
 });

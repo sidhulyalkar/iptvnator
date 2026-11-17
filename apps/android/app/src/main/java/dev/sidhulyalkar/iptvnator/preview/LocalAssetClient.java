@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.util.Collections;
 
 /** Owns the packaged origin. Requests for missing assets never hit the network. */
-final class LocalAssetClient extends WebViewClient {
+class LocalAssetClient extends WebViewClient {
     static final String HOST = "appassets.androidplatform.net";
     static final String HOME = "https://" + HOST + "/assets/";
     private final Activity activity;

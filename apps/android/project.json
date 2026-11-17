@@ -1,0 +1,14 @@
+{
+    "name": "fire-tablet-preview",
+    "projectType": "application",
+    "sourceRoot": "apps/android/app/src",
+    "tags": ["scope:app", "domain:mobile", "type:app"],
+    "targets": {
+        "test": {
+            "command": "node --test tools/android/verify-android-bundle.test.mjs"
+        },
+        "build": {
+            "command": "pnpm nx build web --configuration=android && node tools/android/verify-android-bundle.mjs && gradle -p apps/android :app:assembleDebug"
+        }
+    }
+}
