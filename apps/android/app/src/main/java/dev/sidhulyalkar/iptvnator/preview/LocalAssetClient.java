@@ -37,9 +37,11 @@ class LocalAssetClient extends WebViewClient {
                 || !uri.getPath().startsWith("/assets/")) {
             return missing();
         }
-        WebResourceResponse local = loader.shouldInterceptRequest(uri);
-        if (local != null) return local;
-        if (request.isForMainFrame() && "GET".equals(request.getMethod())) {
+        // AssetsPathHandler returns a non-null HTTP 404 for a missing file.
+        // Handle the launch URL and Angular document routes BEFORE it runs.
+        // A missing JS/CSS/font still goes to the loader and stays a 404.
+        if (AssetRoutePolicy.shouldServeIndex(
+                uri.getPath(), request.getMethod(), request.isForMainFrame())) {
             try {
                 return new WebResourceResponse("text/html", "UTF-8",
                         activity.getAssets().open("index.html"));
@@ -47,7 +49,8 @@ class LocalAssetClient extends WebViewClient {
                 return missing();
             }
         }
-        return missing();
+        WebResourceResponse local = loader.shouldInterceptRequest(uri);
+        return local != null ? local : missing();
     }
 
     @Override
