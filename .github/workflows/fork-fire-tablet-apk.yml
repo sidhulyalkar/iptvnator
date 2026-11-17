@@ -1,0 +1,91 @@
+name: Fork Fire tablet APK preview (debug-signed artifact)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/fire-tablet-android-preview-20261117
+    paths:
+      - 'apps/android/**'
+      - 'apps/web/**'
+      - 'libs/**'
+      - 'tools/android/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/fork-fire-tablet-apk.yml'
+  pull_request:
+    paths:
+      - 'apps/android/**'
+      - 'apps/web/**'
+      - 'libs/**'
+      - 'tools/android/**'
+      - '.github/workflows/fork-fire-tablet-apk.yml'
+
+# Read-only CI. Never publish or tag, and never use signing secrets.
+permissions:
+  contents: read
+
+concurrency:
+  group: fork-fire-tablet-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fire-tablet-apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 65
+    env:
+      CI: 'true'
+      NX_DAEMON: 'false'
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK 35
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Qualify Android bundle contracts
+        run: |
+          node --test tools/android/*.test.mjs
+          pnpm run typecheck:web
+          pnpm nx build web --configuration=android --output-style=static
+          node tools/android/verify-android-bundle.mjs
+      - name: Compile, lint and unit-test native shell
+        run: gradle -p apps/android :app:assembleDebug :app:lintDebug :app:testDebugUnitTest --no-daemon --stacktrace
+      - name: Verify APK identity, signing and bundled assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk=apps/android/app/build/outputs/apk/debug/app-debug.apk
+          test -s "$apk"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$apk" > "$RUNNER_TEMP/fire-badging.txt"
+          grep -Fq "package: name='dev.sidhulyalkar.iptvnator.preview'" "$RUNNER_TEMP/fire-badging.txt"
+          grep -Fq "sdkVersion:'28'" "$RUNNER_TEMP/fire-badging.txt"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
+          unzip -Z1 "$apk" > "$RUNNER_TEMP/fire-apk-contents.txt"
+          grep -Fxq 'assets/index.html' "$RUNNER_TEMP/fire-apk-contents.txt"
+          grep -Eq '^assets/main[.-].*\.js$' "$RUNNER_TEMP/fire-apk-contents.txt"
+          mkdir -p dist/android-preview
+          output="IPTVnator-Fire-Preview-${GITHUB_SHA:0:12}.apk"
+          cp "$apk" "dist/android-preview/$output"
+          (cd dist/android-preview && sha256sum "$output" > "$output.sha256")
+      - uses: actions/upload-artifact@v7
+        with:
+          name: iptvnator-fire-tablet-preview-${{ github.sha }}
+          retention-days: 7
+          if-no-files-found: error
+          path: dist/android-preview/*

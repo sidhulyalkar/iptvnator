@@ -1,0 +1,53 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'dev.sidhulyalkar.iptvnator.preview'
+    compileSdk 35
+
+    // AGP 8+ no longer generates BuildConfig unless requested explicitly.
+    buildFeatures {
+        buildConfig true
+    }
+
+    defaultConfig {
+        applicationId 'dev.sidhulyalkar.iptvnator.preview'
+        minSdk 28 // Fire OS 7 / Android 9 and newer; older Fire OS is unqualified.
+        targetSdk 34
+        versionCode 1
+        versionName '0.25.0-fire-preview.1'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // Bundle the *built* Angular assets rather than a live URL. This directory
+    // is generated using "pnpm nx build web --configuration=android".
+    sourceSets {
+        main {
+            assets.srcDirs = [file('../../../dist/apps/web')]
+        }
+    }
+}
+
+tasks.named('preBuild') {
+    doFirst {
+        File html = file('../../../dist/apps/web/index.html')
+        if (!html.isFile()) {
+            throw new GradleException(
+                'Missing bundled web app. Run: pnpm nx build web --configuration=android'
+            )
+        }
+        if (!(html.getText('UTF-8') =~ /<base\s+href=['"]\/assets\/['"]\s*\/?\s*>/).find()) {
+            throw new GradleException('Android bundle must use /assets/ base href')
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.12.1'
+    testImplementation 'junit:junit:4.13.2'
+}

@@ -1,0 +1,2 @@
+Build trigger file for the Fire tablet APK (edit in GitHub, commit to feature branch).
+request=0

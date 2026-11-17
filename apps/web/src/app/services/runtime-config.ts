@@ -24,6 +24,7 @@ export function getRuntimeBackendUrl(): string {
 export interface ServiceWorkerRuntimeContext {
     readonly electronBridge?: unknown;
     readonly protocol?: string;
+    readonly hostname?: string;
 }
 
 function getDefaultServiceWorkerRuntimeContext(): ServiceWorkerRuntimeContext {
@@ -35,6 +36,8 @@ function getDefaultServiceWorkerRuntimeContext(): ServiceWorkerRuntimeContext {
         electronBridge: browserWindow?.electron,
         protocol:
             browserWindow?.location?.protocol ?? globalThis.location?.protocol,
+        hostname:
+            browserWindow?.location?.hostname ?? globalThis.location?.hostname,
     };
 }
 
@@ -48,6 +51,7 @@ export function shouldEnableServiceWorker(
         !!navigatorRef &&
         'serviceWorker' in navigatorRef &&
         !runtimeContext.electronBridge &&
-        runtimeContext.protocol !== 'file:'
+        runtimeContext.protocol !== 'file:' &&
+        runtimeContext.hostname !== 'appassets.androidplatform.net'
     );
 }
