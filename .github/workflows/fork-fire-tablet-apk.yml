@@ -21,7 +21,7 @@ on:
       - 'tools/android/**'
       - '.github/workflows/fork-fire-tablet-apk.yml'
 
-# No publishing, tagging, signing secrets, or releases. Preview artifacts only.
+# Read-only CI. Never publish or tag, and never use signing secrets.
 permissions:
   contents: read
 
@@ -64,7 +64,7 @@ jobs:
           pnpm run typecheck:web
           pnpm nx build web --configuration=android --output-style=static
           node tools/android/verify-android-bundle.mjs
-      - name: Compile, lint and test native shell
+      - name: Compile, lint and unit-test native shell
         run: gradle -p apps/android :app:assembleDebug :app:lintDebug :app:testDebugUnitTest --no-daemon --stacktrace
       - name: Verify APK identity, signing and bundled assets
         shell: bash
@@ -78,18 +78,7 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
           unzip -Z1 "$apk" > "$RUNNER_TEMP/fire-apk-contents.txt"
           grep -Fxq 'assets/index.html' "$RUNNER_TEMP/fire-apk-contents.txt"
-          grep -Eq '^assets/main[.-].*\.js
-          mkdir -p dist/android-preview
-          output="IPTVnator-Fire-Preview-${GITHUB_SHA:0:12}.apk"
-          cp "$apk" "dist/android-preview/$output"
-          (cd dist/android-preview && sha256sum "$output" > "$output.sha256")
-      - uses: actions/upload-artifact@v7
-        with:
-          name: iptvnator-fire-tablet-preview-${{ github.sha }}
-          retention-days: 7
-          if-no-files-found: error
-          path: dist/android-preview/*
- "$RUNNER_TEMP/fire-apk-contents.txt"
+          grep -Eq '^assets/main[.-].*\.js$' "$RUNNER_TEMP/fire-apk-contents.txt"
           mkdir -p dist/android-preview
           output="IPTVnator-Fire-Preview-${GITHUB_SHA:0:12}.apk"
           cp "$apk" "dist/android-preview/$output"
