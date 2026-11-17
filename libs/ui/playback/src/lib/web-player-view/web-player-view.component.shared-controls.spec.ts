@@ -422,7 +422,9 @@ describe('WebPlayerViewComponent shared web controls metadata', () => {
                 })
         );
         (window as unknown as { electron?: unknown }).electron = {
+            beginStreamHeaderSession: jest.fn().mockResolvedValue(1),
             setUserAgent,
+            releaseStreamHeaders: jest.fn().mockResolvedValue(true),
         };
         const RootHostComponent = createOnPushHostTree(WebPlayerViewComponent, {
             streamUrl: 'https://example.com/episode-1.mp4',

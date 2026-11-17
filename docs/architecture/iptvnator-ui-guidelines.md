@@ -33,6 +33,58 @@ Use it when changing existing views or introducing new list-based UI in the work
    without vertical accent strips or side-border imitations, including in
    EPG rows.
 
+8. Favorites remain one shared collection, not a second player. The workspace
+   rail exposes global favorites; the M3U context rail exposes the existing
+   playlist-scoped favorites route. Cross-source rows display credential-safe
+   playlist provenance beside the channel name. The shared channel row owns
+   the toggle with stable pressed semantics and keeps it reachable in narrow lists.
+
+9. Use selection, typography and restrained theme accents for a futuristic
+   appearance rather than fullscreen chrome, exaggerated glow or perpetual
+   animation. Respect reduced motion and preserve the media-first layout.
+
+The Recently Viewed inline video player also exposes a compact, accessible
+favorite action for its **committed** M3U, Xtream or Stalker selection, reusing
+the collection's existing `favoriteToggled` event and confirmed favorite
+UID state. The accessible label includes sanitized playlist provenance so
+duplicate channel names are distinguishable. It is hidden for pending changes, vanished catalog items and the
+Favorites-only route, which currently unmounts playback on active-item removal.
+This is not a second persistence service. The same presentation-only action is shared with the dedicated Xtream Live
+player. Xtream obtains status from the persisted favorites snapshot, verifies
+add/remove after the existing store operation, and sends the confirmed state
+through `XtreamFavoriteMarksService` to the sidebar and fullscreen list.
+When saved state cannot be read, the icon offers read-only Retry instead of
+silently toggling an unknown favorite. The player favorite is scoped to its
+committed playback identity, not the sidebar highlight.
+
+The dedicated M3U inline video player uses the same shared favorite
+presentation and delegates to the already-established NgRx
+`FavoritesActions.updateFavorites` with playlist-scoped URL selection.
+Unlike Xtream, the legacy M3U action updates UI state synchronously and
+persists through an asynchronous effect. The star mirrors the existing M3U
+rail's local state, not a separate persistence acknowledgement.
+
+The dedicated Stalker inline video player also uses the same shared favorite
+button and snapshots its channel from the committed playback identity, never
+from a row selected during a pending stream resolution. Its adapter reads back
+the portal's saved favorites after the existing store completion callback.
+Stalker store methods now surface failure callbacks; an unavailable result
+becomes read-only Retry. Stalker ITV and radio removals use typed,
+source-scoped storage filtering: a live channel cannot remove VOD or radio
+favorites sharing a numeric ID. Untyped legacy records are preserved rather
+than deleted without evidence of ownership. The existing channel list's local
+marks now flip only
+after the portal save acknowledges success, and source switches clear the old
+playlist's marks.
+
+Radio and the legacy/external-player/fullscreen ownership differences remain
+follow-ups.
+
+The staged frontend configuration and experience roadmap is recorded in
+[Unified TV frontend configuration](../../.plans/2026-11-03-unified-tv-frontend-configuration.md).
+It specifies when capability-aware features may become visible and the
+validation gates before changing navigation or playback defaults.
+
 ## Angular Material's Role
 
 Decision of 2026-10-12. The repository has no ADR folder; decisions live in
@@ -87,6 +139,7 @@ the subsystem's document.
   `libs/ui/components/src/lib/channel-list-container/channel-list-item/channel-list-item.component.html`
 - Channel row styles:
   `libs/ui/components/src/lib/channel-list-container/channel-list-item/channel-list-item.component.scss`
+- Programme guide search interactions: [Minimal guide search UI](../../docs/product/unified-tv-guide-search-ui.md) (loading/error/empty states, result focus, guide-only metadata).
 - Shared EPG timeline:
   `libs/ui/epg/src/lib/epg-timeline/epg-timeline.component.html`
 - Shared EPG timeline styles:

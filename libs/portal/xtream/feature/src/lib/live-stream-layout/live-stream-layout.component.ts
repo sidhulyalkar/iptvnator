@@ -108,6 +108,11 @@ import {
 import { LiveStreamAutoOpenStateService } from './live-stream-auto-open-state.service';
 import { createPlaybackSessionKey } from '@iptvnator/playback/util';
 import { injectXtreamRecentHistory } from '../xtream-recent-history';
+import {
+    createXtreamLiveFavoriteTarget,
+    type XtreamLiveFavoriteTarget,
+} from './xtream-live-favorite-target';
+import { XtreamLivePlayerFavoriteComponent } from './xtream-live-player-favorite.component';
 
 import {
     XtreamLiveChannelNavigationService,
@@ -149,6 +154,7 @@ const LIVE_CHANNEL_SORT_STORAGE_KEY = 'xtream-live-channel-sort-mode';
         ResizableDirective,
         TranslatePipe,
         WebPlayerViewComponent,
+        XtreamLivePlayerFavoriteComponent,
     ],
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -428,6 +434,16 @@ export class LiveStreamLayoutComponent
     );
     readonly activePlayback = signal<ResolvedPortalPlayback | null>(null);
     private readonly activeLiveItemId = signal<number | null>(null);
+    /** Favorite actions follow the committed media, not the selected row. */
+    private readonly committedFavoriteTarget =
+        signal<XtreamLiveFavoriteTarget | null>(null);
+    readonly activeFavoriteTarget = computed(() => {
+        const target = this.committedFavoriteTarget();
+        return this.activePlayback() &&
+            target?.playlistId === this.xtreamStore.currentPlaylist()?.id
+            ? target
+            : null;
+    });
     /**
      * Provider category id of the playing channel, for the parental lock.
      * `null`: nothing playing (or no category); `'unknown'`: Electron has
@@ -456,6 +472,7 @@ export class LiveStreamLayoutComponent
                 this.activePlaylistId = null;
                 this.activePlayback.set(null);
                 this.activeLiveItemId.set(null);
+                this.committedFavoriteTarget.set(null);
                 this.activeCatchupProgram.set(null);
             }
         });
@@ -488,6 +505,7 @@ export class LiveStreamLayoutComponent
                 this.playbackRequestId += 1;
                 this.activePlayback.set(null);
                 this.activeLiveItemId.set(null);
+                this.committedFavoriteTarget.set(null);
                 this.activeCatchupProgram.set(null);
                 this.activeLiveProviderCategoryId = null;
             });
@@ -678,6 +696,9 @@ export class LiveStreamLayoutComponent
             this.resolveLiveProviderCategoryId(item);
         const playlist = this.xtreamStore.currentPlaylist();
         this.activePlaylistId = playlist?.id ?? null;
+        this.committedFavoriteTarget.set(
+            createXtreamLiveFavoriteTarget(playlist, item)
+        );
         this.activePlayback.set({
             streamUrl,
             liveAutoTsUrl: playlist
@@ -994,6 +1015,9 @@ export class LiveStreamLayoutComponent
 
         this.activePlaylistId = playlist.id;
         this.activeCatchupProgram.set(program);
+        this.committedFavoriteTarget.set(
+            createXtreamLiveFavoriteTarget(playlist, item)
+        );
         this.activePlayback.set({
             streamUrl: catchupUrl,
             title: this.getCatchupPlaybackTitle(item, program),

@@ -157,6 +157,18 @@
     line-height: 1.2;
 }
 
+.channel-source {
+    min-width: 0;
+    max-width: 40%;
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+    line-height: 1.2;
+    color: var(--app-muted-color);
+}
+
 .catchup-badge {
     flex-shrink: 0;
     width: 15px;
@@ -288,6 +300,17 @@
         line-height: 18px;
     }
 
+    button:focus-visible {
+        outline: 2px solid var(--app-focus-ring);
+        outline-offset: 2px;
+        opacity: 1;
+    }
+
+    .favorite-button[aria-pressed='true'] {
+        color: var(--app-selection-color);
+        opacity: 1;
+    }
+
     /* Material keeps a 48px touch target on icon buttons; stacked 28px
        buttons would overlap by 20px and the later sibling would steal
        clicks from the lower third of the button above. Constrain the
@@ -306,6 +329,10 @@
     .action-buttons button,
     .action-buttons mat-icon {
         color: inherit;
+    }
+
+    .channel-source {
+        color: var(--app-selection-text-color);
     }
 }
 
@@ -373,8 +400,12 @@
         display: none;
     }
 
-    .channel-list-item.compact .channel-logo-shell,
-    .channel-list-item.compact .action-buttons {
+    .channel-list-item.compact .channel-logo-shell {
+        display: none;
+    }
+
+    // Retain the star in narrow channel panels, hiding the optional info slot.
+    .channel-list-item.compact .program-info-button {
         display: none;
     }
 
@@ -393,4 +424,16 @@
 .program-info-button.slot-empty {
     visibility: hidden;
     pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .channel-list-item,
+    .action-buttons button,
+    .epg-progress-fill {
+        transition: none;
+    }
+
+    .channel-list-item.active {
+        transform: none;
+    }
 }

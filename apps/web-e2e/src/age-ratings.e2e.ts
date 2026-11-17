@@ -1,6 +1,5 @@
 import { configureMockProviderBackend } from './provider-target-route';
 import { expect, test } from './fixtures';
-import { configureMockProviderBackend } from './provider-target-route';
 import {
     addXtreamPortal,
     interceptXtreamRequests,

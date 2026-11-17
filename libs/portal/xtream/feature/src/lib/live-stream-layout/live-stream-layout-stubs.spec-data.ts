@@ -15,6 +15,7 @@ import {
     EpgTimelineSummary,
 } from '@iptvnator/ui/epg';
 import { PlaybackFallbackRequest } from '@iptvnator/ui/playback';
+import type { XtreamLiveFavoriteTarget } from './xtream-live-favorite-target';
 
 @Component({
     changeDetection: ChangeDetectionStrategy.Eager,
@@ -114,3 +115,12 @@ export const playlist = {
     username: 'demo',
     password: 'secret',
 };
+
+@Component({
+    selector: 'app-xtream-live-player-favorite',
+    standalone: true,
+    template: '',
+})
+export class StubXtreamLivePlayerFavoriteComponent {
+    readonly target = input.required<XtreamLiveFavoriteTarget>();
+}

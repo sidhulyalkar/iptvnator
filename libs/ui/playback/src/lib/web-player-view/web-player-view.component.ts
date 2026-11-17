@@ -54,7 +54,10 @@ import {
     type PlaybackBinding,
     PlaybackRecoverySession,
 } from './playback-recovery-session';
-import { WebPlayerApplicationHandoffCoordinator } from './web-player-application-handoff';
+import {
+    createWebPlayerHeaderHandoffDiagnostic,
+    WebPlayerApplicationHandoffCoordinator,
+} from './web-player-application-handoff';
 import {
     ownsPlaybackApplication,
     type PlaybackApplicationOwnership,
@@ -352,7 +355,15 @@ export class WebPlayerViewComponent implements OnDestroy {
                 (handoff) => {
                     this.channel.set(handoff.channel);
                     this.vjsOptions.set(handoff.vjsOptions);
-                }
+                },
+                () =>
+                    this.recovery.handlePlaybackIssue(
+                        createWebPlayerHeaderHandoffDiagnostic(
+                            binding.target,
+                            playback.streamUrl
+                        ),
+                        binding
+                    )
             );
         });
     }

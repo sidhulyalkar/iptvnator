@@ -14,6 +14,8 @@
         [filter]="filter()"
         [searchEnabled]="searchEnabled"
         [searchQuery]="searchQuery()"
+        [searchPanelVisible]="searchPanelVisible()"
+        [searchResultsAvailable]="searchStatus() === 'ready' && searchResults().length > 0"
         [shownCount]="rows().length"
         [totalCount]="totalCount()"
         (stepDay)="stepDay($event)"
@@ -24,36 +26,68 @@
         (zoomChange)="setZoom($event)"
         (filterChange)="setFilter($event)"
         (searchQueryChange)="onSearchQueryChange($event)"
+        (searchFirstResult)="focusFirstSearchResult()"
     />
 
     @if (searchPanelVisible()) {
-        <div class="epg-guide__search-results" role="listbox">
-            @for (
-                hit of searchResults();
-                track hit.program.channel + hit.program.start + $index
-            ) {
+        <!-- Results are actionable buttons, not a listbox: Tab/Enter work
+             natively, with Arrow keys as an optional shortcut. -->
+        <div
+            id="epg-guide-search-results"
+            class="epg-guide__search-results"
+            role="region"
+            [attr.aria-label]="'EPG.GUIDE.SEARCH_PROGRAMMES' | translate"
+            [attr.aria-busy]="searchStatus() === 'loading'"
+            (keydown)="onSearchResultsKeydown($event)"
+        >
+            @if (searchStatus() === 'loading') {
+                <div class="epg-guide__search-empty" role="status">
+                    {{ 'LOADING' | translate }}
+                </div>
+            } @else if (searchStatus() === 'error') {
+                <div class="epg-guide__search-empty" role="alert">
+                    {{ 'EPG.GUIDE.SEARCH_FAILED' | translate }}
+                </div>
                 <button
                     type="button"
-                    class="epg-guide__search-result"
-                    role="option"
-                    [attr.aria-selected]="false"
-                    (click)="openSearchResult(hit)"
-                >
-                    <span class="epg-guide__search-title">{{
-                        hit.program.title
-                    }}</span>
-                    <span class="epg-guide__search-meta">
-                        {{
-                            searchHitStartMs(hit)
-                                | date: 'EEE d MMM HH:mm' : '' : currentLocale()
-                        }}
-                        · {{ hit.channelName ?? hit.program.channel }}
-                    </span>
-                </button>
-            } @empty {
-                <div class="epg-guide__search-empty">
+                    class="epg-guide__search-retry"
+                    (click)="retrySearch()"
+                >{{ 'RETRY' | translate }}</button>
+            } @else if (searchResults().length === 0) {
+                <div class="epg-guide__search-empty" role="status">
                     {{ 'EPG.GUIDE.NO_RESULTS' | translate }}
                 </div>
+            } @else {
+                <div class="epg-guide__search-count" role="status">
+                    {{ 'EPG.GUIDE.RESULTS_LABEL' | translate }}
+                    · {{ searchResults().length }}
+                </div>
+                @for (
+                    hit of searchResults();
+                    track hit.program.channel + hit.program.start + $index
+                ) {
+                    <button
+                        type="button"
+                        class="epg-guide__search-result"
+                        (click)="openSearchResult(hit)"
+                    >
+                        <span class="epg-guide__search-title">{{
+                            hit.program.title
+                        }}</span>
+                        <span class="epg-guide__search-meta">
+                            {{
+                                searchHitStartMs(hit)
+                                    | date: 'EEE d MMM HH:mm' : '' : currentLocale()
+                            }}
+                            · {{ hit.channelName ?? hit.program.channel }}
+                        </span>
+                        @if (!hit.channelId) {
+                            <span class="epg-guide__search-uncertain">
+                                {{ 'EPG.GUIDE.CHANNEL_NOT_IN_LIST' | translate }}
+                            </span>
+                        }
+                    </button>
+                }
             }
         </div>
     }

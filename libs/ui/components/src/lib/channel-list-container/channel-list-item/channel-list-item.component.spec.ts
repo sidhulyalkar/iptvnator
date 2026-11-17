@@ -184,12 +184,12 @@ describe('ChannelListItemComponent', () => {
         fixture.componentRef.setInput('showFavoriteButton', true);
         fixture.detectChanges();
         const toggle = fixture.nativeElement.querySelector('.favorite-button');
-        expect(toggle.getAttribute('aria-label')).toBe('CHANNELS.FAVORITE');
+        expect(toggle.getAttribute('aria-label')).toBe('CHANNELS.FAVORITE: Starred');
         expect(toggle.getAttribute('aria-pressed')).toBe('false');
 
         fixture.componentRef.setInput('isFavorite', true);
         fixture.detectChanges();
-        expect(toggle.getAttribute('aria-label')).toBe('CHANNELS.FAVORITE');
+        expect(toggle.getAttribute('aria-label')).toBe('CHANNELS.FAVORITE: Starred');
         expect(toggle.getAttribute('aria-pressed')).toBe('true');
     });
 
@@ -415,4 +415,37 @@ describe('ChannelListItemComponent with an EPG display offset', () => {
         // The row still hands the raw programme to consumers (dialog, catch-up).
         expect(program.startTimestamp).toBe(startTimestamp);
     });
+    it('identifies same-named channels by source without changing pressed semantics', async () => {
+        // The preceding offset test owns a local fixture; this separate
+        // test requires its own TestBed setup and instance.
+        await TestBed.configureTestingModule({
+            imports: [
+                ChannelListItemComponent,
+                NoopAnimationsModule,
+                TranslateModule.forRoot(),
+            ],
+            providers: [
+                {
+                    provide: EpgProgrammeDialogService,
+                    useValue: { open: jest.fn() },
+                },
+            ],
+        }).compileComponents();
+        const fixture = TestBed.createComponent(ChannelListItemComponent);
+        fixture.componentRef.setInput('name', 'News');
+        fixture.componentRef.setInput('sourceLabel', 'Living Room');
+        fixture.componentRef.setInput('showFavoriteButton', true);
+        fixture.detectChanges();
+        const primary: HTMLButtonElement = fixture.nativeElement.querySelector('button.channel-content');
+        const toggle: HTMLButtonElement = fixture.nativeElement.querySelector('.favorite-button');
+        expect(primary.getAttribute('aria-label')).toBe('News · Living Room');
+        expect(toggle.getAttribute('aria-label')).toBe('CHANNELS.FAVORITE: News · Living Room');
+        expect(toggle.getAttribute('aria-pressed')).toBe('false');
+        fixture.componentRef.setInput('isFavorite', true);
+        fixture.detectChanges();
+        expect(toggle.getAttribute('aria-pressed')).toBe('true');
+        expect(toggle.getAttribute('aria-label')).toBe('CHANNELS.FAVORITE: News · Living Room');
+        expect(fixture.nativeElement.querySelector('.channel-source')?.textContent?.trim()).toBe('Living Room');
+    });
+
 });

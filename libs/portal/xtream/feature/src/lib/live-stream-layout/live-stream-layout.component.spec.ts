@@ -51,7 +51,9 @@ import {
     StubGridListComponent,
     StubPortalChannelsListComponent,
     StubWebPlayerViewComponent,
+    StubXtreamLivePlayerFavoriteComponent,
 } from './live-stream-layout-stubs.spec-data';
+import { XtreamLivePlayerFavoriteComponent } from './xtream-live-player-favorite.component';
 
 const LIVE_CHANNEL_SORT_STORAGE_KEY = 'xtream-live-channel-sort-mode';
 
@@ -251,6 +253,7 @@ describe('LiveStreamLayoutComponent', () => {
                         PortalChannelsListComponent,
                         TranslatePipe,
                         WebPlayerViewComponent,
+                        XtreamLivePlayerFavoriteComponent,
                     ],
                 },
                 add: {
@@ -263,6 +266,7 @@ describe('LiveStreamLayoutComponent', () => {
                             (value: string | null | undefined) => value ?? ''
                         ),
                         StubWebPlayerViewComponent,
+                        StubXtreamLivePlayerFavoriteComponent,
                     ],
                 },
             })
@@ -549,6 +553,12 @@ describe('LiveStreamLayoutComponent', () => {
             contentId: 101,
         });
         expect(webPlayer.playbackSessionKey()).toBe(expected);
+        const favorite = fixture.debugElement.query(
+            By.directive(StubXtreamLivePlayerFavoriteComponent)
+        ).componentInstance as StubXtreamLivePlayerFavoriteComponent;
+        expect(favorite.target()).toEqual(
+            expect.objectContaining({ playlistId: 'playlist|one', xtreamId: 101 })
+        );
 
         xtreamStore.constructStreamUrl.mockReturnValueOnce(
             'https://example.com/replaced-timeshift.ts'
@@ -560,6 +570,7 @@ describe('LiveStreamLayoutComponent', () => {
         component.playLive({ ...first, xtream_id: 102 });
         fixture.detectChanges();
         expect(webPlayer.playbackSessionKey()).not.toBe(expected);
+        expect(favorite.target().xtreamId).toBe(102);
     });
 
     it('forwards the exact resolved live playback to external fallback', () => {

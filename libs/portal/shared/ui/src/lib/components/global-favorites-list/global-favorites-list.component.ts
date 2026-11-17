@@ -50,6 +50,7 @@ import { TranslateModule } from '@ngx-translate/core';
 export interface EnrichedUnifiedFavorite extends UnifiedFavoriteChannel {
     currentEpgProgram: EpgProgram | null;
     progressPercentage: number;
+    playlistLabel: string;
 }
 
 export type GlobalFavoritesListMode = 'favorites' | 'recent';
@@ -159,6 +160,7 @@ export class GlobalFavoritesListComponent {
                 : null;
             return {
                 ...ch,
+                playlistLabel: playlistDisplayLabel(ch.playlistName),
                 currentEpgProgram,
                 progressPercentage: this.calcProgress(currentEpgProgram),
             };

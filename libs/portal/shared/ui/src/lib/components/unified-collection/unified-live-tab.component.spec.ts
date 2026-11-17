@@ -75,7 +75,10 @@ describe('UnifiedLiveTabComponent', () => {
     beforeEach(async () => {
         window.electron = {
             platform: 'darwin',
-        } as typeof window.electron;
+            beginStreamHeaderSession: jest.fn().mockResolvedValue(1),
+            setUserAgent: jest.fn().mockResolvedValue(true),
+            releaseStreamHeaders: jest.fn().mockResolvedValue(true),
+        } as unknown as typeof window.electron;
 
         localStorage.removeItem('live-epg-panel-state');
 
@@ -835,15 +838,17 @@ describe('UnifiedLiveTabComponent', () => {
             {
                 authorization: 'Bearer TOKEN99',
                 cookie: 'mac=00:1A:79:00:00:01',
-            }
+            },
+            { epoch: 1, generation: expect.any(Number) }
         );
 
         component.onClose();
+        await fixture.whenStable();
 
-        // Closing the radio player must drop the portal credentials.
-        expect(setUserAgent).toHaveBeenLastCalledWith(
-            undefined,
-            undefined,
+        // Closing the radio player releases the scoped lease rather than
+        // issuing an unleased legacy clear that might touch another stream.
+        expect(window.electron!.releaseStreamHeaders).toHaveBeenCalledWith(
+            { epoch: 1, generation: expect.any(Number) },
             'https://example.com/jazz.mp3'
         );
     });

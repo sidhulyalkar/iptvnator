@@ -44,6 +44,7 @@
 }
 
 .video-player {
+    position: relative;
     background: #000;
 
     &:has(> app-audio-player) {

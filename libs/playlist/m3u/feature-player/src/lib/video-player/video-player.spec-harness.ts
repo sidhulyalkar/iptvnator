@@ -3,6 +3,7 @@ import { TranslateService } from '@ngx-translate/core';
 import {
     selectActive,
     selectActiveEpgProgram,
+    selectActivePlaylistId,
     selectActivePlaybackUrl,
     selectChannels,
     selectChannelsLoading,
@@ -65,6 +66,8 @@ export const storeMock = {
                 return activeEpgProgram;
             case selectFavorites:
                 return favoriteIds;
+            case selectActivePlaylistId:
+                return playlistId;
             default:
                 return signal(null);
         }

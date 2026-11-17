@@ -43,6 +43,8 @@ export class ChannelListItemComponent {
     readonly isDraggable = input(false);
     readonly logo = input<string | null | undefined>('');
     readonly name = input('');
+    /** Safe, human-readable playlist label for cross-provider collections. */
+    readonly sourceLabel = input('');
     readonly disabled = input(false);
     readonly statusLabel = input('');
     readonly displayName = computed(() =>
@@ -51,6 +53,10 @@ export class ChannelListItemComponent {
             this.settingsStore.stripCountryPrefix?.()
         )
     );
+    readonly contextualName = computed(() => {
+        const source = this.sourceLabel().trim();
+        return source ? `${this.displayName()} · ${source}` : this.displayName();
+    });
     readonly showFavoriteButton = input(false);
     readonly showAuxActionButton = input(false);
     readonly showProgramInfoButton = input(true);

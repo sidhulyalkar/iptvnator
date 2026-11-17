@@ -170,4 +170,31 @@ describe('playback diagnostic view formatters', () => {
             ).toBe(expected);
         }
     );
+    it('uses stream-load wording when request headers fail before the player starts', () => {
+        const headerIssue: PlaybackDiagnostic = {
+            ...issue,
+            code: PlaybackDiagnosticCode.UnknownPlaybackError,
+            source: PlaybackDiagnosticSource.Source,
+            sourceUrl: '',
+            details: 'request-header-setup-failed',
+        };
+        expect(getDiagnosticTitleKey(headerIssue)).toBe(
+            'PLAYBACK_DIAGNOSTICS.NETWORK_ERROR.TITLE'
+        );
+        expect(getDiagnosticDescriptionKey(headerIssue, true, true)).toBe(
+            'PLAYBACK_DIAGNOSTICS.NETWORK_ERROR.DESCRIPTION'
+        );
+
+        const ordinaryUnknown: PlaybackDiagnostic = {
+            ...headerIssue,
+            details: 'other-error',
+        };
+        expect(getDiagnosticTitleKey(ordinaryUnknown)).toBe(
+            'PLAYBACK_DIAGNOSTICS.UNKNOWN_PLAYBACK_ERROR.TITLE'
+        );
+        expect(getDiagnosticDescriptionKey(ordinaryUnknown, true, true)).toBe(
+            'PLAYBACK_DIAGNOSTICS.UNKNOWN_PLAYBACK_ERROR.DESCRIPTION'
+        );
+    });
+
 });

@@ -1,0 +1,8 @@
+<app-live-player-favorite-button
+    testId="m3u-live-player-favorite"
+    [channelName]="channel().name || channel().tvg?.name || 'Live TV'"
+    [sourceName]="sourceName()"
+    [isFavorite]="isFavorite()"
+    [known]="actionable()"
+    (toggleRequested)="toggle()"
+/>

@@ -115,6 +115,12 @@
                             (volumeChange)="onInlineVolumeChange($event)"
                         />
                     } @else {
+                        <app-m3u-live-player-favorite
+                            [channel]="activeChannel"
+                            [playlistId]="activePlaylistId()"
+                            [sourceName]="panelTitle()"
+                            [favoriteUrls]="favoriteUrls()"
+                        />
                         <app-web-player-view
                             [playbackSessionKey]="playbackSessionKey()"
                             [streamUrl]="embeddedPlayback()?.streamUrl ?? ''"

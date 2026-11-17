@@ -33,6 +33,7 @@ import {
     EpgItem,
     EpgProgram,
     ResolvedPortalPlayback,
+    type StalkerPortalItem,
 } from '@iptvnator/shared/interfaces';
 import { MatDialog } from '@angular/material/dialog';
 import { EpgRuntimeBridgeService } from '@iptvnator/epg/data-access';
@@ -45,7 +46,9 @@ import {
     StubPortalEmptyStateComponent,
     StubResizableDirective,
     StubWebPlayerViewComponent,
+    StubStalkerLivePlayerFavoriteComponent,
 } from './stalker-live-stream-layout.spec-stubs';
+import { StalkerLivePlayerFavoriteComponent } from './stalker-live-player-favorite.component';
 
 /** Installs an intentionally partial Electron bridge double. */
 function installElectronBridge(bridge: Partial<ElectronBridgeApi>): void {
@@ -181,7 +184,7 @@ describe('StalkerLiveStreamLayoutComponent', () => {
     };
 
     const playlistService = {
-        getPortalFavorites: jest.fn(() => of([])),
+        getPortalFavorites: jest.fn(() => of<StalkerPortalItem[]>([])),
     };
     const portalPlayer = {
         isEmbeddedPlayer: jest.fn(() => true),
@@ -203,6 +206,8 @@ describe('StalkerLiveStreamLayoutComponent', () => {
         installElectronBridge({
             platform: 'darwin',
             setUserAgent: jest.fn().mockResolvedValue(true),
+            beginStreamHeaderSession: jest.fn().mockResolvedValue(1),
+            releaseStreamHeaders: jest.fn().mockResolvedValue(true),
             updateRemoteControlStatus: jest.fn(),
             onChannelChange: jest.fn(() => jest.fn()),
             onRemoteControlCommand: jest.fn(() => jest.fn()),
@@ -344,6 +349,7 @@ describe('StalkerLiveStreamLayoutComponent', () => {
                         ResizableDirective,
                         TranslatePipe,
                         WebPlayerViewComponent,
+                        StalkerLivePlayerFavoriteComponent,
                     ],
                 },
                 add: {
@@ -358,6 +364,7 @@ describe('StalkerLiveStreamLayoutComponent', () => {
                             (value: string | null | undefined) => value ?? ''
                         ),
                         StubWebPlayerViewComponent,
+                        StubStalkerLivePlayerFavoriteComponent,
                     ],
                 },
             })
@@ -405,6 +412,101 @@ describe('StalkerLiveStreamLayoutComponent', () => {
         settingsStore.resolvedEpgViewMode.set('timeline'); // restore for sibling tests
     });
 
+    it('ignores a favorite confirmation belonging to another portal', () => {
+        fixture.detectChanges();
+        component.favorites.clear();
+        const before = component.favoriteRevision();
+
+        component.onPlayerFavoriteConfirmed({
+            playlistId: 'another-source',
+            channelId: '10001',
+            favoriteId: '10001',
+            isFavorite: true,
+        });
+        expect(component.favorites.has('10001')).toBe(false);
+        expect(component.favoriteRevision()).toBe(before);
+
+        component.onPlayerFavoriteConfirmed({
+            playlistId: 'playlist-1',
+            channelId: '10001',
+            favoriteId: '10001',
+            isFavorite: true,
+        });
+        expect(component.favorites.has('10001')).toBe(true);
+        expect(component.favoriteRevision()).toBe(before + 1);
+    });
+
+    it('keeps row marks unchanged until a portal write succeeds', () => {
+        fixture.detectChanges();
+        component.favorites.clear();
+        stalkerStore.addToFavorites.mockClear();
+        stalkerStore.removeFromFavorites.mockClear();
+        const channel = itvChannels()[0];
+
+        component.toggleFavorite(channel);
+        expect(component.favorites.has('10001')).toBe(false);
+        expect(stalkerStore.addToFavorites).toHaveBeenCalledTimes(1);
+        component.toggleFavorite(channel);
+        expect(stalkerStore.addToFavorites).toHaveBeenCalledTimes(1);
+
+        stalkerStore.addToFavorites.mock.calls[0][1]();
+        expect(component.favorites.has('10001')).toBe(true);
+        component.toggleFavorite(channel);
+        expect(component.favorites.has('10001')).toBe(true);
+        expect(stalkerStore.removeFromFavorites).toHaveBeenCalledWith(
+            '10001',
+            expect.any(Function),
+            expect.any(Function),
+            'itv'
+        );
+        stalkerStore.removeFromFavorites.mock.calls[0][1]();
+        expect(component.favorites.has('10001')).toBe(false);
+    });
+
+    it('allows retrying a failed row write without showing a saved star', () => {
+        fixture.detectChanges();
+        component.favorites.clear();
+        stalkerStore.addToFavorites.mockClear();
+
+        component.toggleFavorite(itvChannels()[0]);
+        stalkerStore.addToFavorites.mock.calls[0][2]();
+        expect(component.favorites.has('10001')).toBe(false);
+
+        component.toggleFavorite(itvChannels()[0]);
+        expect(stalkerStore.addToFavorites).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not infer a live favorite from a legacy numeric category ID', () => {
+        playlistService.getPortalFavorites.mockReturnValueOnce(
+            of([
+                { id: '10001', category_id: '17' },
+                { id: '10002', category_id: 'itv' },
+            ])
+        );
+        stalkerStore.selectedContentType.set('itv');
+        fixture.detectChanges();
+        expect(component.favorites.has('10001')).toBe(false);
+        expect(component.favorites.has('10002')).toBe(true);
+    });
+
+    it('keeps radio favorite marks without importing ITV favorites', () => {
+        playlistService.getPortalFavorites.mockReturnValueOnce(
+            of([
+                { id: 'radio-1', category_id: 'radio' },
+                { id: '10001', category_id: 'itv' },
+                { id: 'movie-1', category_id: 'vod' },
+            ])
+        );
+        stalkerStore.selectedContentType.set('radio');
+        selectedCategoryId.set('radio-all');
+        fixture.detectChanges();
+
+        expect(component.favorites.has('radio-1')).toBe(true);
+        expect(component.favorites.has('10001')).toBe(false);
+        expect(component.favorites.has('movie-1')).toBe(false);
+        expect(component.activeFavoriteTarget()).toBeNull();
+    });
+
     it('does not request or render EPG without a portal transport', async () => {
         fixture.destroy();
         // This spec's runtime stub derives every flag from window.electron,
@@ -419,6 +521,16 @@ describe('StalkerLiveStreamLayoutComponent', () => {
         await fixture.whenStable();
         fixture.detectChanges();
 
+        const favorite = fixture.debugElement.query(
+            By.directive(StubStalkerLivePlayerFavoriteComponent)
+        ).componentInstance as StubStalkerLivePlayerFavoriteComponent;
+        expect(favorite.target()).toEqual(
+            expect.objectContaining({
+                playlistId: 'playlist-1',
+                channelId: '10001',
+                channelName: 'Alpha TV',
+            })
+        );
         expect(ensureBulkItvEpg).not.toHaveBeenCalled();
         expect(fetchChannelEpg).not.toHaveBeenCalled();
         expect(
@@ -1318,7 +1430,8 @@ describe('StalkerLiveStreamLayoutComponent', () => {
             {
                 authorization: 'Bearer TOKEN99',
                 cookie: 'mac=00:1A:79:00:00:01',
-            }
+            },
+            expect.objectContaining({ epoch: 1, generation: expect.any(Number) })
         );
 
         const audioPlayer = fixture.debugElement.query(
@@ -1365,9 +1478,10 @@ describe('StalkerLiveStreamLayoutComponent', () => {
         resolveApply?.();
         await playPromise;
 
-        expect(window.electron?.setUserAgent).toHaveBeenLastCalledWith(
-            undefined,
-            undefined,
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(window.electron?.releaseStreamHeaders).toHaveBeenCalledWith(
+            expect.objectContaining({ epoch: 1, generation: expect.any(Number) }),
             'http://portal.example/radio_2.mpg'
         );
         expect(component.activePlayback()).toBeNull();
@@ -1395,9 +1509,10 @@ describe('StalkerLiveStreamLayoutComponent', () => {
         await component.playChannel(itvChannels()[0]);
         await fixture.whenStable();
 
-        expect(window.electron?.setUserAgent).toHaveBeenLastCalledWith(
-            undefined,
-            undefined,
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(window.electron?.releaseStreamHeaders).toHaveBeenCalledWith(
+            expect.objectContaining({ epoch: 1, generation: expect.any(Number) }),
             'http://portal.example/radio_2.mpg'
         );
     });

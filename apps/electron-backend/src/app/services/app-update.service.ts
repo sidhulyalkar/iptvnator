@@ -12,6 +12,7 @@ import {
     ElectronBridgeAppUpdateStatus,
 } from '@iptvnator/shared/interfaces';
 import { AppUpdateFeedTarget, applyAppUpdateChannel } from './app-update-feed';
+import { FORK_PREVIEW_RELEASES_URL } from './fork-preview-runtime';
 import {
     CachedGitHubRelease,
     normalizeVersion,
@@ -83,6 +84,8 @@ type AppUpdaterAdapterProvider = AppUpdaterAdapter | (() => AppUpdaterAdapter);
 export interface AppUpdateServiceOptions {
     app: AppUpdateAppAdapter;
     appVersion?: string;
+    /** Packaged unsigned fork build, never eligible for upstream updates. */
+    previewBuild?: boolean;
     updater: AppUpdaterAdapterProvider;
     getMainWindow: () => AppUpdateWindow | null | undefined;
     platform?: NodeJS.Platform;
@@ -166,6 +169,8 @@ function toReleaseInfo(
 export class AppUpdateService {
     private readonly currentVersion: string;
     private readonly isPackaged: boolean;
+    private readonly previewBuild: boolean;
+    private readonly manualDownloadUrl: string;
     private readonly supportedSelfUpdate: boolean;
     private readonly catalogs: AppUpdateReleaseCatalogs;
     private readonly updater: AppUpdaterAdapter | null = null;
@@ -182,8 +187,12 @@ export class AppUpdateService {
             options.appVersion
         );
         this.isPackaged = options.app.isPackaged;
+        this.previewBuild = options.previewBuild === true;
         this.channel = options.channel ?? DEFAULT_APP_UPDATE_CHANNEL;
-        this.supportedSelfUpdate = isSelfUpdateSupported(
+        this.manualDownloadUrl = this.previewBuild
+            ? FORK_PREVIEW_RELEASES_URL
+            : appUpdateReleasesPageUrl(this.channel);
+        this.supportedSelfUpdate = !this.previewBuild && isSelfUpdateSupported(
             options.app.isPackaged,
             options.platform ?? process.platform,
             options.processEnv ?? process.env
@@ -197,7 +206,7 @@ export class AppUpdateService {
         );
         this.status = {
             currentVersion: this.currentVersion,
-            manualDownloadUrl: appUpdateReleasesPageUrl(this.channel),
+            manualDownloadUrl: this.manualDownloadUrl,
             status: getInitialStatus(this.supportedSelfUpdate),
             supportedSelfUpdate: this.supportedSelfUpdate,
             channel: this.channel,
@@ -259,7 +268,7 @@ export class AppUpdateService {
     }
 
     private async runCheckForUpdates(): Promise<ElectronBridgeAppUpdateStatus> {
-        if (!this.isPackaged) {
+        if (!this.isPackaged || this.previewBuild) {
             this.setStatus({
                 status: ELECTRON_BRIDGE_APP_UPDATE_STATUSES.Unsupported,
             });
@@ -289,7 +298,7 @@ export class AppUpdateService {
     }
 
     async checkForUpdatesOnStartup(): Promise<ElectronBridgeAppUpdateStatus> {
-        if (!this.isPackaged) {
+        if (!this.isPackaged || this.previewBuild) {
             return this.getStatus();
         }
 
@@ -300,6 +309,17 @@ export class AppUpdateService {
     getReleaseNotes(
         request: ElectronBridgeAppUpdateReleaseNotesRequest = {}
     ): Promise<ElectronBridgeAppUpdateReleaseNotes> {
+        if (this.previewBuild) {
+            // A preview must not present upstream release notes as its own.
+            return Promise.resolve({
+                version: this.currentVersion,
+                tagName: '',
+                bodyMarkdown: '',
+                htmlUrl: this.manualDownloadUrl,
+                hasPrevious: false,
+                hasNext: false,
+            });
+        }
         return this.catalogs.getReleaseNotes(this.channel, request);
     }
 
@@ -485,7 +505,9 @@ export class AppUpdateService {
             ...this.status,
             ...update,
             currentVersion: this.currentVersion,
-            manualDownloadUrl: appUpdateReleasesPageUrl(this.channel),
+            manualDownloadUrl: this.previewBuild
+                ? this.manualDownloadUrl
+                : appUpdateReleasesPageUrl(this.channel),
             supportedSelfUpdate: this.supportedSelfUpdate,
             channel: this.channel,
             installedChannel: this.status.installedChannel,

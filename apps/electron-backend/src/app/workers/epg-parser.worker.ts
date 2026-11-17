@@ -162,6 +162,15 @@ async function fetchAndParseEpgStreaming(
         // Publish all batches, source metadata and freshness together. A SQL
         // failure rolls back the replacement; parsing never changes live rows.
         staged.commit();
+        // Search remains on the full-table fallback until this separate
+        // worker-side validation commits its trusted marker. Failure to
+        // optimize indexing must not turn a valid import into an error.
+        try {
+            const integrity = epgDb.ensureSearchIndex();
+            epgLogger.log(loggerLabel, 'EPG search index status', integrity);
+        } catch {
+            epgLogger.log(loggerLabel, 'EPG index validation unavailable; using fallback search');
+        }
     } catch (error) {
         throw toEpgFetchError(error, url);
     } finally {

@@ -167,6 +167,30 @@ test('@epg @electron opens the programme guide with the playlist channels, switc
             timeout: 20000,
         });
 
+        // Programme search is metadata-only: it never switches or loads a stream.
+        // Native result buttons are keyboard-accessible; an empty match set
+        // is distinguishable from loading and the panel closes on clear.
+        const searchInput = guide.locator(
+            '.guide-toolbar__input--search input'
+        );
+        await expect(searchInput).toBeVisible();
+        await searchInput.fill('Bulletin');
+        const searchPanel = guide.locator('.epg-guide__search-results');
+        const resultButton = searchPanel.locator('.epg-guide__search-result');
+        await expect(resultButton).toHaveCount(1, { timeout: 20000 });
+        await expect(resultButton).toContainText('Guide Bulletin Now');
+        await expect(searchPanel).toHaveAttribute('role', 'region');
+        await searchInput.press('ArrowDown');
+        await expect(resultButton).toBeFocused();
+        await resultButton.press('Escape');
+        await expect(searchInput).toBeFocused();
+        await searchInput.fill('no-such-programme-synthetic');
+        await expect(searchPanel.locator('.epg-guide__search-empty'))
+            .toContainText('No programmes found', { timeout: 20000 });
+        await searchInput.fill('');
+        await expect(searchPanel).toHaveCount(0);
+        await expect(rows.nth(0)).toHaveClass(/is-active/);
+
         // The guide opens on "now", and the Now button and N jump back to it
         // on both axes at once (#1733: the lane stayed at midnight).
         await expect.poll(() => nowLineInLane(app.mainWindow)).toBe(true);

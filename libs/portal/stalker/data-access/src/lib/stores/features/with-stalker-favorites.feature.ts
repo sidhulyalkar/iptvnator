@@ -40,12 +40,18 @@ export function withStalkerFavorites() {
                 const storeContext = store as typeof store &
                     FavoritesStoreContext;
                 return {
-                    addToFavorites(item: FavoritePayload, onDone?: () => void) {
+                    addToFavorites(
+                        item: FavoritePayload,
+                        onDone?: () => void,
+                        onError?: () => void
+                    ) {
                         const portalId = storeContext.currentPlaylist()?._id;
                         if (!portalId) {
+                            onError?.();
                             return;
                         }
 
+                        let acknowledged = false;
                         playlistService
                             .addPortalFavorite(portalId, {
                                 ...item,
@@ -65,55 +71,95 @@ export function withStalkerFavorites() {
                                     item.id
                                 ),
                             })
-                            .subscribe((updatedPlaylist) => {
-                                dispatchStalkerPlaylistMetaUpdate(
-                                    ngrxStore,
-                                    portalId,
-                                    {
-                                        favorites: updatedPlaylist?.favorites,
-                                    }
-                                );
-                                snackBar.open(
-                                    translate.instant(
-                                        'PORTALS.ADDED_TO_FAVORITES'
-                                    ),
-                                    undefined,
-                                    {
-                                        duration: 1000,
-                                    }
-                                );
-                                onDone?.();
+                            .subscribe({
+                                next: (updatedPlaylist) => {
+                                    acknowledged = true;
+                                    dispatchStalkerPlaylistMetaUpdate(
+                                        ngrxStore,
+                                        portalId,
+                                        {
+                                            favorites: updatedPlaylist?.favorites,
+                                        }
+                                    );
+                                    snackBar.open(
+                                        translate.instant(
+                                            'PORTALS.ADDED_TO_FAVORITES'
+                                        ),
+                                        undefined,
+                                        { duration: 1000 }
+                                    );
+                                    onDone?.();
+                                },
+                                error: () => {
+                                    snackBar.open(
+                                        translate.instant(
+                                            'PORTALS.FAVORITE_SAVE_FAILED'
+                                        ),
+                                        undefined,
+                                        { duration: 6000 }
+                                    );
+                                    onError?.();
+                                },
+                                complete: () => {
+                                    if (!acknowledged) onError?.();
+                                },
                             });
                     },
                     removeFromFavorites(
                         favoriteId: string,
-                        onDone?: () => void
+                        onDone?: () => void,
+                        onError?: () => void,
+                        contentType?: 'itv' | 'radio'
                     ) {
                         const portalId = storeContext.currentPlaylist()?._id;
                         if (!portalId) {
+                            onError?.();
                             return;
                         }
 
-                        playlistService
-                            .removeFromPortalFavorites(portalId, favoriteId)
-                            .subscribe((updatedPlaylist) => {
-                                dispatchStalkerPlaylistMetaUpdate(
-                                    ngrxStore,
-                                    portalId,
-                                    {
-                                        favorites: updatedPlaylist?.favorites,
-                                    }
-                                );
-                                snackBar.open(
-                                    translate.instant(
-                                        'PORTALS.REMOVED_FROM_FAVORITES'
-                                    ),
-                                    undefined,
-                                    {
-                                        duration: 1000,
-                                    }
-                                );
-                                onDone?.();
+                        let acknowledged = false;
+                        const removal = contentType
+                            ? playlistService.removeFromPortalFavorites(
+                                  portalId,
+                                  favoriteId,
+                                  contentType
+                              )
+                            : playlistService.removeFromPortalFavorites(
+                                  portalId,
+                                  favoriteId
+                              );
+                        removal.subscribe({
+                                next: (updatedPlaylist) => {
+                                    acknowledged = true;
+                                    dispatchStalkerPlaylistMetaUpdate(
+                                        ngrxStore,
+                                        portalId,
+                                        {
+                                            favorites: updatedPlaylist?.favorites,
+                                        }
+                                    );
+                                    snackBar.open(
+                                        translate.instant(
+                                            'PORTALS.REMOVED_FROM_FAVORITES'
+                                        ),
+                                        undefined,
+                                        { duration: 1000 }
+                                    );
+                                    onDone?.();
+                                },
+                                error: () => {
+                                    snackBar.open(
+                                        translate.instant(
+                                            'PORTALS.FAVORITE_SAVE_FAILED'
+                                        ),
+                                        undefined,
+                                        { duration: 6000 }
+                                    );
+                                    onError?.();
+                                },
+                                complete: () => {
+                                    if (!acknowledged) onError?.();
+                                },
                             });
                     },
                 };

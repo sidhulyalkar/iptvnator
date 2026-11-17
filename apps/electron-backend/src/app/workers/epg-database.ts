@@ -3,6 +3,7 @@ import { getIptvnatorDatabasePath } from '@iptvnator/shared/database/path-utils'
 import type { ParsedChannel, ParsedProgram } from './epg-streaming-parser';
 import { restoreSurvivingChannelMetadata } from './epg-source-metadata';
 import { EpgImportStaging } from './epg-import-staging';
+import { ensureEpgFtsIndex, type EpgFtsIntegrityResult } from './epg-fts-integrity';
 
 /**
  * Database helper for worker-owned EPG operations.
@@ -205,6 +206,14 @@ export class EpgDatabase {
                 this.insertPrograms(programmes, sourceUrl, true);
             }
         );
+    }
+
+    /**
+     * Worker-only, once-per-database FTS integrity validation. Never call
+     * from Electron main process or for each search request.
+     */
+    ensureSearchIndex(): EpgFtsIntegrityResult {
+        return ensureEpgFtsIndex(this.db);
     }
 
     close(): void {

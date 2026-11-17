@@ -1,0 +1,173 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+/**
+ * Focused release-candidate tour. All three frames are existing first-party
+ * product screenshots, not rendered simulations or evidence of PR qualification.
+ * Keep the page unindexed until native app and provider gates are complete.
+ */
+const steps = [
+  {
+    id: 'find',
+    number: '01',
+    label: 'Find',
+    title: 'Get to the channel.',
+    description: 'A readable channel list stays beside the player. Fewer decisions between browsing and watching.',
+    image: '/iptvnator/screenshots/screenshot-player.webp',
+    alt: 'Existing IPTVnator screenshot showing the live channel list beside the player and program details',
+    width: 2442,
+    height: 1806,
+  },
+  {
+    id: 'guide',
+    number: '02',
+    label: 'Decide',
+    title: 'Know what is on.',
+    description: 'Use the guide to compare current and upcoming programs without losing the channel context.',
+    image: '/iptvnator/screenshots/multi-epg-view.webp',
+    alt: 'Existing IPTVnator screenshot showing the multi-channel electronic program guide',
+    width: 2180,
+    height: 1448,
+  },
+  {
+    id: 'keep',
+    number: '03',
+    label: 'Keep',
+    title: 'Return in one step.',
+    description: 'Favorites, recent channels and continue-watching live together instead of hiding behind each provider.',
+    image: '/iptvnator/screenshots/dashboard-with-content.webp',
+    alt: 'Existing IPTVnator screenshot showing a dashboard with favorites and recently watched content',
+    width: 2072,
+    height: 1602,
+  },
+] as const;
+---
+
+<BaseLayout
+  title="Unified TV candidate tour | IPTVnator"
+  description="A focused, three-step overview of the IPTVnator interface: find a channel, decide what to watch, and keep your favorites."
+  noindex={true}
+>
+  <section class="mx-auto max-w-6xl px-6 pb-20 pt-28 sm:pt-36" aria-labelledby="candidate-title">
+    <div class="max-w-3xl">
+      <p class="font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-accent-400">Interface preview · Work in progress</p>
+      <h1 id="candidate-title" class="mt-5 font-display text-5xl font-bold tracking-tight text-surface-50 sm:text-6xl">
+        Find. Watch. Return.
+      </h1>
+      <p class="mt-5 max-w-2xl text-base leading-relaxed text-surface-400 sm:text-lg">
+        The best TV interface gets out of the way. Three familiar tasks, one calm workspace.
+      </p>
+    </div>
+
+    <div class="mt-11 overflow-hidden rounded-2xl border border-surface-800 bg-surface-900/40" data-candidate-tour>
+      <div class="flex flex-wrap border-b border-surface-800" role="tablist" aria-label="Explore the TV workflow">
+        {steps.map((step, i) => (
+          <button
+            type="button"
+            id={`candidate-tab-${step.id}`}
+            role="tab"
+            aria-controls={`candidate-panel-${step.id}`}
+            aria-selected={i === 0 ? 'true' : 'false'}
+            tabindex={i === 0 ? 0 : -1}
+            data-candidate-tab
+            class="candidate-tab flex min-h-14 flex-1 items-center justify-center gap-3 border-b-2 border-transparent px-4 py-3 text-left font-medium text-surface-300 transition-colors hover:text-surface-50 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent-400 sm:justify-start sm:px-6"
+          >
+            <span class="font-mono text-xs text-surface-500">{step.number}</span>
+            <span class="text-[15px]">{step.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {steps.map((step, i) => (
+        <div
+          role="tabpanel"
+          id={`candidate-panel-${step.id}`}
+          aria-labelledby={`candidate-tab-${step.id}`}
+          tabindex="0"
+          hidden={i !== 0}
+          data-candidate-panel
+          class="candidate-panel p-4 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-400 sm:p-6"
+        >
+          <div class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
+            <div>
+              <h2 class="font-display text-xl font-semibold text-surface-50 sm:text-2xl">{step.title}</h2>
+              <p class="mt-2 max-w-xl text-sm leading-relaxed text-surface-400">{step.description}</p>
+            </div>
+            <span class="shrink-0 font-mono text-[10px] uppercase tracking-widest text-surface-500">
+              Product screenshot
+            </span>
+          </div>
+          <figure class="overflow-hidden rounded-lg border border-surface-700 bg-surface-950">
+            <img
+              src={i === 0 ? step.image : undefined}
+              data-src={step.image}
+              alt={step.alt}
+              width={step.width}
+              height={step.height}
+              loading={i === 0 ? 'eager' : 'lazy'}
+              decoding="async"
+              class="block h-auto w-full object-contain"
+            />
+            <figcaption class="border-t border-surface-800 px-4 py-2.5 text-xs text-surface-500">
+              Existing product screenshot for orientation; not a capture of the candidate branch.
+            </figcaption>
+          </figure>
+        </div>
+      ))}
+    </div>
+
+    <div class="mt-7 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <p class="max-w-2xl text-sm leading-relaxed text-surface-400">
+        This is a screenshot tour, not a video player or a simulated provider.
+        The browser build requires your own authorized sources; native Electron playback is still undergoing qualification.
+      </p>
+      <a
+        href="https://github.com/sidhulyalkar/iptvnator/pull/17"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg border border-surface-600 px-5 text-sm font-semibold text-surface-100 transition-colors hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-400"
+      >View candidate and test status</a>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  const tour = document.querySelector<HTMLElement>('[data-candidate-tour]');
+  if (tour) {
+    const tabs = Array.from(tour.querySelectorAll<HTMLButtonElement>('[data-candidate-tab]'));
+    const panels = Array.from(tour.querySelectorAll<HTMLElement>('[data-candidate-panel]'));
+    function select(index: number, focus = false): void {
+      tabs.forEach((tab, i) => {
+        const active = i === index;
+        tab.setAttribute('aria-selected', String(active));
+        tab.tabIndex = active ? 0 : -1;
+        panels[i].hidden = !active;
+      });
+      const img = panels[index].querySelector<HTMLImageElement>('img[data-src]');
+      if (img && !img.getAttribute('src')) img.src = img.dataset.src ?? '';
+      if (focus) tabs[index].focus();
+    }
+    tabs.forEach((tab, i) => {
+      tab.addEventListener('click', () => select(i));
+      tab.addEventListener('keydown', (event) => {
+        const next = event.key === 'ArrowRight' || event.key === 'ArrowDown'
+          ? (i + 1) % tabs.length
+          : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
+            ? (i - 1 + tabs.length) % tabs.length
+            : event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : -1;
+        if (next < 0) return;
+        event.preventDefault();
+        select(next, true);
+      });
+    });
+  }
+</script>
+
+<style>
+  .candidate-tab[aria-selected='true'] {
+    border-color: theme('colors.accent.400');
+    color: theme('colors.surface.50');
+    background: rgb(255 255 255 / 0.035);
+  }
+  .candidate-panel[hidden] { display: none; }
+</style>
