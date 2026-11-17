@@ -28,6 +28,17 @@ git commit -m "ci: request unsigned preview installers"
 git push origin HEAD
 ```
 
+For **Windows PowerShell**, run this alternative from an existing local checkout (switch to the remote-tracking branch if necessary):
+
+```powershell
+git fetch origin
+git switch qualify/unified-tv-end-to-end-p0-20261104
+(Get-Date).ToUniversalTime().ToString('o') | Set-Content tools/packaging/preview-build-request.txt
+git add tools/packaging/preview-build-request.txt
+git commit -m "ci: request unsigned preview installers"
+git push origin HEAD
+```
+
 Then open [GitHub Actions](https://github.com/sidhulyalkar/iptvnator/actions), select **Fork preview installers (unsigned, artifact only)** and open the run for **your new commit**. It should contain `installer-contracts`, `windows-x64`, `macos-arm64`, and `linux-x64`. An Actions artifact appears only after its job succeeds. Scroll to **Artifacts**, download the zip for your OS, then extract that zip.
 
 If Actions are disabled for the repository, enable them in the repository's Actions settings before pushing. If the run fails, share the **failed job and log**, not any tokens or playlist credentials. Do not infer installability from a missing artifact.
