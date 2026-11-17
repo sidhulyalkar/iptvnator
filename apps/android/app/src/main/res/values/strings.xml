@@ -3,5 +3,5 @@
     <string name="app_name">IPTVnator Fire Preview</string>
     <string name="load_error">The bundled TV interface could not be loaded.</string>
     <string name="retry">Retry</string>
-    <string name="open_playlist">Select an M3U playlist</string>
+    <string name="file_picker_unavailable">No Android file picker is available on this tablet.</string>
 </resources>

@@ -14,7 +14,6 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
-import android.webkit.WebViewClient;
 import android.webkit.WebSettings;
 import android.widget.FrameLayout;
 import android.widget.Toast;
@@ -85,11 +84,24 @@ public final class MainActivity extends Activity {
                 try {
                     startActivityForResult(choose, FILE_PICKER_REQUEST);
                     return true;
-                } catch (RuntimeException noPicker) {
-                    cancelFileChooser();
-                    Toast.makeText(MainActivity.this,
-                            R.string.open_playlist, Toast.LENGTH_LONG).show();
-                    return false;
+                } catch (RuntimeException noDocumentsPicker) {
+                    // Some Fire OS versions have a basic content picker but no
+                    // ACTION_OPEN_DOCUMENT activity. Keep playlist import usable.
+                    Intent fallback = new Intent(Intent.ACTION_GET_CONTENT);
+                    fallback.addCategory(Intent.CATEGORY_OPENABLE);
+                    fallback.setType("*/*");
+                    fallback.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    fallback.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,
+                            params.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE);
+                    try {
+                        startActivityForResult(fallback, FILE_PICKER_REQUEST);
+                        return true;
+                    } catch (RuntimeException noPicker) {
+                        cancelFileChooser();
+                        Toast.makeText(MainActivity.this,
+                                R.string.file_picker_unavailable, Toast.LENGTH_LONG).show();
+                        return false;
+                    }
                 }
             }
 
