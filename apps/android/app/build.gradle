@@ -6,6 +6,11 @@ android {
     namespace 'dev.sidhulyalkar.iptvnator.preview'
     compileSdk 35
 
+    // AGP 8+ no longer generates BuildConfig unless requested explicitly.
+    buildFeatures {
+        buildConfig true
+    }
+
     defaultConfig {
         applicationId 'dev.sidhulyalkar.iptvnator.preview'
         minSdk 28 // Fire OS 7 / Android 9 and newer; older Fire OS is unqualified.
